@@ -4,14 +4,18 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChannelPlugin } from "../channels/plugins/types.js";
 import type { OpenClawConfig } from "../config/config.js";
-import { discordPlugin } from "../../extensions/discord/src/channel.js";
 import { slackPlugin } from "../../extensions/slack/src/channel.js";
-import { telegramPlugin } from "../../extensions/telegram/src/channel.js";
+import {
+  createDiscordSecurityFixturePlugin,
+  createTelegramSecurityFixturePlugin,
+} from "../../test/channel-plugin-fixtures.js";
 import { collectPluginsCodeSafetyFindings } from "./audit-extra.js";
 import { runSecurityAudit } from "./audit.js";
 import * as skillScanner from "./skill-scanner.js";
 
 const isWindows = process.platform === "win32";
+const discordPlugin = createDiscordSecurityFixturePlugin();
+const telegramPlugin = createTelegramSecurityFixturePlugin();
 
 function successfulProbeResult(url: string) {
   return {
@@ -597,7 +601,7 @@ describe("security audit", () => {
     );
   });
 
-  it("flags Discord native commands without a guild user allowlist", async () => {
+  it("does not flag Discord native commands without explicit native enablement", async () => {
     const prevStateDir = process.env.OPENCLAW_STATE_DIR;
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-security-audit-discord-"));
     process.env.OPENCLAW_STATE_DIR = tmp;
@@ -627,14 +631,9 @@ describe("security audit", () => {
         plugins: [discordPlugin],
       });
 
-      expect(res.findings).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            checkId: "channels.discord.commands.native.no_allowlists",
-            severity: "warn",
-          }),
-        ]),
-      );
+      expect(
+        res.findings.some((f) => f.checkId === "channels.discord.commands.native.no_allowlists"),
+      ).toBe(false);
     } finally {
       if (prevStateDir == null) {
         delete process.env.OPENCLAW_STATE_DIR;
@@ -693,7 +692,7 @@ describe("security audit", () => {
     }
   });
 
-  it("flags Discord slash commands when access-group enforcement is disabled and no users allowlist exists", async () => {
+  it("does not flag Discord slash commands when access groups are off but native commands are not enabled", async () => {
     const prevStateDir = process.env.OPENCLAW_STATE_DIR;
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-security-audit-discord-open-"));
     process.env.OPENCLAW_STATE_DIR = tmp;
@@ -724,14 +723,9 @@ describe("security audit", () => {
         plugins: [discordPlugin],
       });
 
-      expect(res.findings).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            checkId: "channels.discord.commands.native.unrestricted",
-            severity: "critical",
-          }),
-        ]),
-      );
+      expect(
+        res.findings.some((f) => f.checkId === "channels.discord.commands.native.unrestricted"),
+      ).toBe(false);
     } finally {
       if (prevStateDir == null) {
         delete process.env.OPENCLAW_STATE_DIR;
@@ -1318,9 +1312,11 @@ describe("security audit", () => {
     }
   });
 
-  it("flags unallowlisted extensions as critical when native skill commands are exposed", async () => {
-    const prevDiscordToken = process.env.DISCORD_BOT_TOKEN;
-    delete process.env.DISCORD_BOT_TOKEN;
+  it("flags unallowlisted extensions as critical when Slack native skill commands are exposed", async () => {
+    const prevSlackBotToken = process.env.SLACK_BOT_TOKEN;
+    const prevSlackAppToken = process.env.SLACK_APP_TOKEN;
+    delete process.env.SLACK_BOT_TOKEN;
+    delete process.env.SLACK_APP_TOKEN;
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-security-audit-"));
     const stateDir = path.join(tmp, "state");
     await fs.mkdir(path.join(stateDir, "extensions", "some-plugin"), {
@@ -1330,8 +1326,9 @@ describe("security audit", () => {
 
     try {
       const cfg: OpenClawConfig = {
+        commands: { nativeSkills: true },
         channels: {
-          discord: { enabled: true, token: "t" },
+          slack: { enabled: true, botToken: "xoxb-test", appToken: "xapp-test" },
         },
       };
       const res = await runSecurityAudit({
@@ -1351,10 +1348,15 @@ describe("security audit", () => {
         ]),
       );
     } finally {
-      if (prevDiscordToken == null) {
-        delete process.env.DISCORD_BOT_TOKEN;
+      if (prevSlackBotToken == null) {
+        delete process.env.SLACK_BOT_TOKEN;
       } else {
-        process.env.DISCORD_BOT_TOKEN = prevDiscordToken;
+        process.env.SLACK_BOT_TOKEN = prevSlackBotToken;
+      }
+      if (prevSlackAppToken == null) {
+        delete process.env.SLACK_APP_TOKEN;
+      } else {
+        process.env.SLACK_APP_TOKEN = prevSlackAppToken;
       }
     }
   });

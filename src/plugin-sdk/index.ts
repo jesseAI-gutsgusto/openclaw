@@ -182,19 +182,11 @@ export { formatLocationText, toLocationContext } from "../channels/location.js";
 export { resolveControlCommandGate } from "../channels/command-gating.js";
 export {
   resolveBlueBubblesGroupRequireMention,
-  resolveDiscordGroupRequireMention,
   resolveGoogleChatGroupRequireMention,
-  resolveIMessageGroupRequireMention,
   resolveSlackGroupRequireMention,
-  resolveTelegramGroupRequireMention,
-  resolveWhatsAppGroupRequireMention,
   resolveBlueBubblesGroupToolPolicy,
-  resolveDiscordGroupToolPolicy,
   resolveGoogleChatGroupToolPolicy,
-  resolveIMessageGroupToolPolicy,
   resolveSlackGroupToolPolicy,
-  resolveTelegramGroupToolPolicy,
-  resolveWhatsAppGroupToolPolicy,
 } from "../channels/plugins/group-mentions.js";
 export { recordInboundSession } from "../channels/session.js";
 export {
@@ -205,14 +197,8 @@ export {
   resolveNestedAllowlistDecision,
 } from "../channels/plugins/channel-config.js";
 export {
-  listDiscordDirectoryGroupsFromConfig,
-  listDiscordDirectoryPeersFromConfig,
   listSlackDirectoryGroupsFromConfig,
   listSlackDirectoryPeersFromConfig,
-  listTelegramDirectoryGroupsFromConfig,
-  listTelegramDirectoryPeersFromConfig,
-  listWhatsAppDirectoryGroupsFromConfig,
-  listWhatsAppDirectoryPeersFromConfig,
 } from "../channels/plugins/directory-config.js";
 export type { AllowlistMatch } from "../channels/plugins/allowlist-match.js";
 export { formatAllowlistMatchMeta } from "../channels/plugins/allowlist-match.js";
@@ -276,34 +262,6 @@ export type {
 export { detectMime, extensionForMime, getFileExtension } from "../media/mime.js";
 export { extractOriginalFilename } from "../media/store.js";
 
-// Channel: Discord
-export {
-  listDiscordAccountIds,
-  resolveDefaultDiscordAccountId,
-  resolveDiscordAccount,
-  type ResolvedDiscordAccount,
-} from "../discord/accounts.js";
-export { collectDiscordAuditChannelIds } from "../discord/audit.js";
-export { discordOnboardingAdapter } from "../channels/plugins/onboarding/discord.js";
-export {
-  looksLikeDiscordTargetId,
-  normalizeDiscordMessagingTarget,
-} from "../channels/plugins/normalize/discord.js";
-export { collectDiscordStatusIssues } from "../channels/plugins/status-issues/discord.js";
-
-// Channel: iMessage
-export {
-  listIMessageAccountIds,
-  resolveDefaultIMessageAccountId,
-  resolveIMessageAccount,
-  type ResolvedIMessageAccount,
-} from "../imessage/accounts.js";
-export { imessageOnboardingAdapter } from "../channels/plugins/onboarding/imessage.js";
-export {
-  looksLikeIMessageTargetId,
-  normalizeIMessageMessagingTarget,
-} from "../channels/plugins/normalize/imessage.js";
-
 // Channel: Slack
 export {
   listEnabledSlackAccounts,
@@ -320,82 +278,8 @@ export {
 } from "../channels/plugins/normalize/slack.js";
 export { buildSlackThreadingToolContext } from "../slack/threading-tool-context.js";
 
-// Channel: Telegram
-export {
-  listTelegramAccountIds,
-  resolveDefaultTelegramAccountId,
-  resolveTelegramAccount,
-  type ResolvedTelegramAccount,
-} from "../telegram/accounts.js";
-export { telegramOnboardingAdapter } from "../channels/plugins/onboarding/telegram.js";
-export {
-  looksLikeTelegramTargetId,
-  normalizeTelegramMessagingTarget,
-} from "../channels/plugins/normalize/telegram.js";
-export { collectTelegramStatusIssues } from "../channels/plugins/status-issues/telegram.js";
-export { type TelegramProbe } from "../telegram/probe.js";
-
-// Channel: Signal
-export {
-  listSignalAccountIds,
-  resolveDefaultSignalAccountId,
-  resolveSignalAccount,
-  type ResolvedSignalAccount,
-} from "../signal/accounts.js";
-export { signalOnboardingAdapter } from "../channels/plugins/onboarding/signal.js";
-export {
-  looksLikeSignalTargetId,
-  normalizeSignalMessagingTarget,
-} from "../channels/plugins/normalize/signal.js";
-
-// Channel: WhatsApp
-export {
-  listWhatsAppAccountIds,
-  resolveDefaultWhatsAppAccountId,
-  resolveWhatsAppAccount,
-  type ResolvedWhatsAppAccount,
-} from "../web/accounts.js";
-export { isWhatsAppGroupJid, normalizeWhatsAppTarget } from "../whatsapp/normalize.js";
-export { whatsappOnboardingAdapter } from "../channels/plugins/onboarding/whatsapp.js";
-export { resolveWhatsAppHeartbeatRecipients } from "../channels/plugins/whatsapp-heartbeat.js";
-export {
-  looksLikeWhatsAppTargetId,
-  normalizeWhatsAppMessagingTarget,
-} from "../channels/plugins/normalize/whatsapp.js";
-export { collectWhatsAppStatusIssues } from "../channels/plugins/status-issues/whatsapp.js";
-
 // Channel: BlueBubbles
 export { collectBlueBubblesStatusIssues } from "../channels/plugins/status-issues/bluebubbles.js";
-
-// Channel: LINE
-export {
-  listLineAccountIds,
-  normalizeAccountId as normalizeLineAccountId,
-  resolveDefaultLineAccountId,
-  resolveLineAccount,
-} from "../line/accounts.js";
-export { LineConfigSchema } from "../line/config-schema.js";
-export type {
-  LineConfig,
-  LineAccountConfig,
-  ResolvedLineAccount,
-  LineChannelData,
-} from "../line/types.js";
-export {
-  createInfoCard,
-  createListCard,
-  createImageCard,
-  createActionCard,
-  createReceiptCard,
-  type CardAction,
-  type ListItem,
-} from "../line/flex-templates.js";
-export {
-  processLineMessage,
-  hasMarkdownToConvert,
-  stripMarkdown,
-} from "../line/markdown-to-line.js";
-export type { ProcessedLineMessage } from "../line/markdown-to-line.js";
 
 // Media utilities
 export { loadWebMedia, type WebMediaResult } from "../web/media.js";

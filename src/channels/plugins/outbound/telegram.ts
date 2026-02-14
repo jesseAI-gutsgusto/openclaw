@@ -1,6 +1,8 @@
 import type { ChannelOutboundAdapter } from "../types.js";
-import { markdownToTelegramHtmlChunks } from "../../../telegram/format.js";
-import { sendMessageTelegram } from "../../../telegram/send.js";
+import { chunkText } from "../../../auto-reply/chunk.js";
+
+const LEGACY_TELEGRAM_REMOVED_ERROR =
+  "Telegram adapter was removed from core. Use a channel plugin that provides its own outbound adapter.";
 
 function parseReplyToMessageId(replyToId?: string | null) {
   if (!replyToId) {
@@ -27,11 +29,14 @@ function parseThreadId(threadId?: string | number | null) {
 
 export const telegramOutbound: ChannelOutboundAdapter = {
   deliveryMode: "direct",
-  chunker: markdownToTelegramHtmlChunks,
-  chunkerMode: "markdown",
+  chunker: chunkText,
+  chunkerMode: "text",
   textChunkLimit: 4000,
   sendText: async ({ to, text, accountId, deps, replyToId, threadId }) => {
-    const send = deps?.sendTelegram ?? sendMessageTelegram;
+    const send = deps?.sendTelegram;
+    if (!send) {
+      throw new Error(LEGACY_TELEGRAM_REMOVED_ERROR);
+    }
     const replyToMessageId = parseReplyToMessageId(replyToId);
     const messageThreadId = parseThreadId(threadId);
     const result = await send(to, text, {
@@ -44,7 +49,10 @@ export const telegramOutbound: ChannelOutboundAdapter = {
     return { channel: "telegram", ...result };
   },
   sendMedia: async ({ to, text, mediaUrl, accountId, deps, replyToId, threadId }) => {
-    const send = deps?.sendTelegram ?? sendMessageTelegram;
+    const send = deps?.sendTelegram;
+    if (!send) {
+      throw new Error(LEGACY_TELEGRAM_REMOVED_ERROR);
+    }
     const replyToMessageId = parseReplyToMessageId(replyToId);
     const messageThreadId = parseThreadId(threadId);
     const result = await send(to, text, {
@@ -58,7 +66,10 @@ export const telegramOutbound: ChannelOutboundAdapter = {
     return { channel: "telegram", ...result };
   },
   sendPayload: async ({ to, payload, accountId, deps, replyToId, threadId }) => {
-    const send = deps?.sendTelegram ?? sendMessageTelegram;
+    const send = deps?.sendTelegram;
+    if (!send) {
+      throw new Error(LEGACY_TELEGRAM_REMOVED_ERROR);
+    }
     const replyToMessageId = parseReplyToMessageId(replyToId);
     const messageThreadId = parseThreadId(threadId);
     const telegramData = payload.channelData?.telegram as

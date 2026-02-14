@@ -32,7 +32,6 @@ describe("gateway e2e", () => {
         skipChannels: process.env.OPENCLAW_SKIP_CHANNELS,
         skipGmail: process.env.OPENCLAW_SKIP_GMAIL_WATCHER,
         skipCron: process.env.OPENCLAW_SKIP_CRON,
-        skipCanvas: process.env.OPENCLAW_SKIP_CANVAS_HOST,
         skipBrowser: process.env.OPENCLAW_SKIP_BROWSER_CONTROL_SERVER,
       };
 
@@ -43,7 +42,6 @@ describe("gateway e2e", () => {
       process.env.OPENCLAW_SKIP_CHANNELS = "1";
       process.env.OPENCLAW_SKIP_GMAIL_WATCHER = "1";
       process.env.OPENCLAW_SKIP_CRON = "1";
-      process.env.OPENCLAW_SKIP_CANVAS_HOST = "1";
       process.env.OPENCLAW_SKIP_BROWSER_CONTROL_SERVER = "1";
 
       const token = `test-${randomUUID()}`;
@@ -144,7 +142,6 @@ describe("gateway e2e", () => {
         process.env.OPENCLAW_SKIP_CHANNELS = prev.skipChannels;
         process.env.OPENCLAW_SKIP_GMAIL_WATCHER = prev.skipGmail;
         process.env.OPENCLAW_SKIP_CRON = prev.skipCron;
-        process.env.OPENCLAW_SKIP_CANVAS_HOST = prev.skipCanvas;
         process.env.OPENCLAW_SKIP_BROWSER_CONTROL_SERVER = prev.skipBrowser;
       }
     },
@@ -159,14 +156,12 @@ describe("gateway e2e", () => {
       skipChannels: process.env.OPENCLAW_SKIP_CHANNELS,
       skipGmail: process.env.OPENCLAW_SKIP_GMAIL_WATCHER,
       skipCron: process.env.OPENCLAW_SKIP_CRON,
-      skipCanvas: process.env.OPENCLAW_SKIP_CANVAS_HOST,
       skipBrowser: process.env.OPENCLAW_SKIP_BROWSER_CONTROL_SERVER,
     };
 
     process.env.OPENCLAW_SKIP_CHANNELS = "1";
     process.env.OPENCLAW_SKIP_GMAIL_WATCHER = "1";
     process.env.OPENCLAW_SKIP_CRON = "1";
-    process.env.OPENCLAW_SKIP_CANVAS_HOST = "1";
     process.env.OPENCLAW_SKIP_BROWSER_CONTROL_SERVER = "1";
     delete process.env.OPENCLAW_GATEWAY_TOKEN;
 
@@ -271,7 +266,6 @@ describe("gateway e2e", () => {
       process.env.OPENCLAW_SKIP_CHANNELS = prev.skipChannels;
       process.env.OPENCLAW_SKIP_GMAIL_WATCHER = prev.skipGmail;
       process.env.OPENCLAW_SKIP_CRON = prev.skipCron;
-      process.env.OPENCLAW_SKIP_CANVAS_HOST = prev.skipCanvas;
       process.env.OPENCLAW_SKIP_BROWSER_CONTROL_SERVER = prev.skipBrowser;
     }
   });

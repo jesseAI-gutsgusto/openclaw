@@ -20,78 +20,6 @@ describe("resolveOutboundSessionRoute", () => {
     expect(route?.threadId).toBe("456");
   });
 
-  it("uses Telegram topic ids in group session keys", async () => {
-    const route = await resolveOutboundSessionRoute({
-      cfg: baseConfig,
-      channel: "telegram",
-      agentId: "main",
-      target: "-100123456:topic:42",
-    });
-
-    expect(route?.sessionKey).toBe("agent:main:telegram:group:-100123456:topic:42");
-    expect(route?.from).toBe("telegram:group:-100123456:topic:42");
-    expect(route?.to).toBe("telegram:-100123456");
-    expect(route?.threadId).toBe(42);
-  });
-
-  it("treats Telegram usernames as DMs when unresolved", async () => {
-    const cfg = { session: { dmScope: "per-channel-peer" } } as OpenClawConfig;
-    const route = await resolveOutboundSessionRoute({
-      cfg,
-      channel: "telegram",
-      agentId: "main",
-      target: "@alice",
-    });
-
-    expect(route?.sessionKey).toBe("agent:main:telegram:direct:@alice");
-    expect(route?.chatType).toBe("direct");
-  });
-
-  it("honors dmScope identity links", async () => {
-    const cfg = {
-      session: {
-        dmScope: "per-peer",
-        identityLinks: {
-          alice: ["discord:123"],
-        },
-      },
-    } as OpenClawConfig;
-
-    const route = await resolveOutboundSessionRoute({
-      cfg,
-      channel: "discord",
-      agentId: "main",
-      target: "user:123",
-    });
-
-    expect(route?.sessionKey).toBe("agent:main:direct:alice");
-  });
-
-  it("strips chat_* prefixes for BlueBubbles group session keys", async () => {
-    const route = await resolveOutboundSessionRoute({
-      cfg: baseConfig,
-      channel: "bluebubbles",
-      agentId: "main",
-      target: "chat_guid:ABC123",
-    });
-
-    expect(route?.sessionKey).toBe("agent:main:bluebubbles:group:abc123");
-    expect(route?.from).toBe("group:ABC123");
-  });
-
-  it("treats Zalo Personal DM targets as direct sessions", async () => {
-    const cfg = { session: { dmScope: "per-channel-peer" } } as OpenClawConfig;
-    const route = await resolveOutboundSessionRoute({
-      cfg,
-      channel: "zalouser",
-      agentId: "main",
-      target: "123456",
-    });
-
-    expect(route?.sessionKey).toBe("agent:main:zalouser:direct:123456");
-    expect(route?.chatType).toBe("direct");
-  });
-
   it("uses group session keys for Slack mpim allowlist entries", async () => {
     const cfg = {
       channels: {
@@ -112,5 +40,56 @@ describe("resolveOutboundSessionRoute", () => {
 
     expect(route?.sessionKey).toBe("agent:main:slack:group:g123");
     expect(route?.from).toBe("slack:group:G123");
+  });
+
+  it("builds MSTeams channel session keys", async () => {
+    const route = await resolveOutboundSessionRoute({
+      cfg: baseConfig,
+      channel: "msteams",
+      agentId: "main",
+      target: "msteams:channel:19:abc@thread.tacv2",
+    });
+
+    expect(route?.sessionKey).toBe("agent:main:msteams:channel:19:abc@thread.tacv2");
+    expect(route?.from).toBe("msteams:channel:19:abc@thread.tacv2");
+    expect(route?.to).toBe("conversation:19:abc@thread.tacv2");
+  });
+
+  it("falls back to generic routing for Telegram targets", async () => {
+    const route = await resolveOutboundSessionRoute({
+      cfg: baseConfig,
+      channel: "telegram",
+      agentId: "main",
+      target: "telegram:group:-100123456:topic:42",
+      resolvedTarget: {
+        to: "group:-100123456:topic:42",
+        kind: "group",
+        source: "normalized",
+      },
+    });
+
+    expect(route?.sessionKey).toBe("agent:main:telegram:group:-100123456:topic:42");
+    expect(route?.from).toBe("telegram:group:-100123456:topic:42");
+    expect(route?.to).toBe("channel:-100123456:topic:42");
+  });
+
+  it("honors dmScope identity links through fallback routing", async () => {
+    const cfg = {
+      session: {
+        dmScope: "per-peer",
+        identityLinks: {
+          alice: ["discord:123"],
+        },
+      },
+    } as OpenClawConfig;
+
+    const route = await resolveOutboundSessionRoute({
+      cfg,
+      channel: "discord",
+      agentId: "main",
+      target: "user:123",
+    });
+
+    expect(route?.sessionKey).toBe("agent:main:direct:alice");
   });
 });

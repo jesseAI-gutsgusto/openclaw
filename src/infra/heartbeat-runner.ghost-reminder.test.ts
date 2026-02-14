@@ -3,12 +3,10 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { OpenClawConfig } from "../config/config.js";
-import { telegramPlugin } from "../../extensions/telegram/src/channel.js";
-import { setTelegramRuntime } from "../../extensions/telegram/src/runtime.js";
+import { createTelegramFixturePlugin } from "../../test/channel-plugin-fixtures.js";
 import * as replyModule from "../auto-reply/reply.js";
 import { resolveMainSessionKey } from "../config/sessions.js";
 import { setActivePluginRegistry } from "../plugins/runtime.js";
-import { createPluginRuntime } from "../plugins/runtime/index.js";
 import { createTestRegistry } from "../test-utils/channel-plugins.js";
 import { runHeartbeatOnce } from "./heartbeat-runner.js";
 import { enqueueSystemEvent, resetSystemEventsForTest } from "./system-events.js";
@@ -17,10 +15,10 @@ import { enqueueSystemEvent, resetSystemEventsForTest } from "./system-events.js
 vi.mock("jiti", () => ({ createJiti: () => () => ({}) }));
 
 beforeEach(() => {
-  const runtime = createPluginRuntime();
-  setTelegramRuntime(runtime);
   setActivePluginRegistry(
-    createTestRegistry([{ pluginId: "telegram", plugin: telegramPlugin, source: "test" }]),
+    createTestRegistry([
+      { pluginId: "telegram", plugin: createTelegramFixturePlugin(), source: "test" },
+    ]),
   );
   resetSystemEventsForTest();
 });

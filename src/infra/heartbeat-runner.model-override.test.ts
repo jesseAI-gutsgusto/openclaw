@@ -3,14 +3,13 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { OpenClawConfig } from "../config/config.js";
-import { telegramPlugin } from "../../extensions/telegram/src/channel.js";
-import { setTelegramRuntime } from "../../extensions/telegram/src/runtime.js";
-import { whatsappPlugin } from "../../extensions/whatsapp/src/channel.js";
-import { setWhatsAppRuntime } from "../../extensions/whatsapp/src/runtime.js";
+import {
+  createTelegramFixturePlugin,
+  createWhatsAppFixturePlugin,
+} from "../../test/channel-plugin-fixtures.js";
 import * as replyModule from "../auto-reply/reply.js";
 import { resolveAgentMainSessionKey, resolveMainSessionKey } from "../config/sessions.js";
 import { setActivePluginRegistry } from "../plugins/runtime.js";
-import { createPluginRuntime } from "../plugins/runtime/index.js";
 import { createTestRegistry } from "../test-utils/channel-plugins.js";
 import { runHeartbeatOnce } from "./heartbeat-runner.js";
 
@@ -59,13 +58,10 @@ async function withHeartbeatFixture(
 }
 
 beforeEach(() => {
-  const runtime = createPluginRuntime();
-  setTelegramRuntime(runtime);
-  setWhatsAppRuntime(runtime);
   setActivePluginRegistry(
     createTestRegistry([
-      { pluginId: "whatsapp", plugin: whatsappPlugin, source: "test" },
-      { pluginId: "telegram", plugin: telegramPlugin, source: "test" },
+      { pluginId: "whatsapp", plugin: createWhatsAppFixturePlugin(), source: "test" },
+      { pluginId: "telegram", plugin: createTelegramFixturePlugin(), source: "test" },
     ]),
   );
 });

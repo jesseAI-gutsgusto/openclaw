@@ -78,7 +78,6 @@ export function attachGatewayWsMessageHandler(params: {
   requestHost?: string;
   requestOrigin?: string;
   requestUserAgent?: string;
-  canvasHostUrl?: string;
   connectNonce: string;
   resolvedAuth: ResolvedGatewayAuth;
   /** Optional rate limiter for auth brute-force protection. */
@@ -110,7 +109,6 @@ export function attachGatewayWsMessageHandler(params: {
     requestHost,
     requestOrigin,
     requestUserAgent,
-    canvasHostUrl,
     connectNonce,
     resolvedAuth,
     rateLimiter,
@@ -840,7 +838,6 @@ export function attachGatewayWsMessageHandler(params: {
           },
           features: { methods: gatewayMethods, events },
           snapshot,
-          canvasHostUrl,
           auth: deviceToken
             ? {
                 deviceToken: deviceToken.token,

@@ -1,5 +1,4 @@
 import path from "node:path";
-import type { CanvasHostServer } from "../canvas-host/server.js";
 import type { PluginServicesHandle } from "../plugins/services.js";
 import type { RuntimeEnv } from "../runtime.js";
 import type { ControlUiRootState } from "./control-ui.js";
@@ -85,7 +84,6 @@ export { __resetModelCatalogCacheForTest } from "./server-model-catalog.js";
 ensureOpenClawCliOnPath();
 
 const log = createSubsystemLogger("gateway");
-const logCanvas = log.child("canvas");
 const logDiscovery = log.child("discovery");
 const logTailscale = log.child("tailscale");
 const logChannels = log.child("channels");
@@ -97,7 +95,6 @@ const logHooks = log.child("hooks");
 const logPlugins = log.child("plugins");
 const logWsControl = log.child("ws");
 const gatewayRuntime = runtimeForLogger(log);
-const canvasRuntime = runtimeForLogger(logCanvas);
 
 export type GatewayServer = {
   close: (opts?: { reason?: string; restartExpectedMs?: number | null }) => Promise<void>;
@@ -141,10 +138,6 @@ export type GatewayServerOptions = {
    */
   tailscale?: import("../config/config.js").GatewayTailscaleConfig;
   /**
-   * Test-only: allow canvas host startup even when NODE_ENV/VITEST would disable it.
-   */
-  allowCanvasHostInTests?: boolean;
-  /**
    * Test-only: override the onboarding wizard runner.
    */
   wizardRunner?: (
@@ -158,7 +151,7 @@ export async function startGatewayServer(
   port = 18789,
   opts: GatewayServerOptions = {},
 ): Promise<GatewayServer> {
-  // Ensure all default port derivations (browser/canvas) see the actual runtime port.
+  // Ensure all default port derivations see the actual runtime port.
   process.env.OPENCLAW_GATEWAY_PORT = String(port);
   logAcceptedEnvOption({
     key: "OPENCLAW_RAW_STREAM",
@@ -269,7 +262,6 @@ export async function startGatewayServer(
     tailscaleMode,
   } = runtimeConfig;
   let hooksConfig = runtimeConfig.hooksConfig;
-  const canvasHostEnabled = runtimeConfig.canvasHostEnabled;
 
   // Create auth rate limiter only when explicitly configured.
   const rateLimitConfig = cfgAtStart.gateway?.auth?.rateLimit;
@@ -313,13 +305,11 @@ export async function startGatewayServer(
   const { wizardSessions, findRunningWizard, purgeWizardSession } = createWizardSessionTracker();
 
   const deps = createDefaultDeps();
-  let canvasHostServer: CanvasHostServer | null = null;
   const gatewayTls = await loadGatewayTlsRuntime(cfgAtStart.gateway?.tls, log.child("tls"));
   if (cfgAtStart.gateway?.tls?.enabled && !gatewayTls.enabled) {
     throw new Error(gatewayTls.error ?? "gateway tls: failed to enable");
   }
   const {
-    canvasHost,
     httpServer,
     httpServers,
     httpBindHosts,
@@ -337,7 +327,6 @@ export async function startGatewayServer(
     chatAbortControllers,
     toolEventRecipients,
   } = await createGatewayRuntimeState({
-    cfg: cfgAtStart,
     bindHost,
     port,
     controlUiEnabled,
@@ -352,10 +341,6 @@ export async function startGatewayServer(
     hooksConfig: () => hooksConfig,
     pluginRegistry,
     deps,
-    canvasRuntime,
-    canvasHostEnabled,
-    allowCanvasHostInTests: opts.allowCanvasHostInTests,
-    logCanvas,
     log,
     logHooks,
     logPlugins,
@@ -488,15 +473,9 @@ export async function startGatewayServer(
     forwarder: execApprovalForwarder,
   });
 
-  const canvasHostServerPort = (canvasHostServer as CanvasHostServer | null)?.port;
-
   attachGatewayWsHandlers({
     wss,
     clients,
-    port,
-    gatewayHost: bindHost ?? undefined,
-    canvasHostEnabled: Boolean(canvasHost),
-    canvasHostServerPort,
     resolvedAuth,
     rateLimiter: authRateLimiter,
     gatewayMethods,
@@ -632,8 +611,6 @@ export async function startGatewayServer(
   const close = createGatewayCloseHandler({
     bonjourStop,
     tailscaleCleanup,
-    canvasHost,
-    canvasHostServer,
     stopChannel,
     pluginServices,
     cron,

@@ -91,7 +91,7 @@ describe("initSessionState reset triggers in WhatsApp groups", () => {
     expect(result.bodyStripped).toBe("");
   });
 
-  it("Reset trigger /new blocked for unauthorized sender in existing session", async () => {
+  it("Reset trigger /new still starts a new session when provider dock is unavailable", async () => {
     const storePath = await createStorePath("openclaw-group-reset-unauth-");
     const sessionKey = "agent:main:whatsapp:group:120363406150318674@g.us";
     const existingSessionId = "existing-session-123";
@@ -129,8 +129,9 @@ describe("initSessionState reset triggers in WhatsApp groups", () => {
     });
 
     expect(result.triggerBodyNormalized).toBe("/new");
-    expect(result.sessionId).toBe(existingSessionId);
-    expect(result.isNewSession).toBe(false);
+    expect(result.sessionId).not.toBe(existingSessionId);
+    expect(result.isNewSession).toBe(true);
+    expect(result.bodyStripped).toBe("");
   });
 
   it("Reset trigger works when RawBody is clean but Body has wrapped context", async () => {
@@ -214,7 +215,7 @@ describe("initSessionState reset triggers in WhatsApp groups", () => {
     expect(result.bodyStripped).toBe("");
   });
 
-  it("Reset trigger /new blocked when SenderId is LID but SenderE164 is unauthorized", async () => {
+  it("Reset trigger /new still starts a new session for LID sender when dock is unavailable", async () => {
     const storePath = await createStorePath("openclaw-group-reset-lid-unauth-");
     const sessionKey = "agent:main:whatsapp:group:120363406150318674@g.us";
     const existingSessionId = "existing-session-123";
@@ -251,8 +252,9 @@ describe("initSessionState reset triggers in WhatsApp groups", () => {
     });
 
     expect(result.triggerBodyNormalized).toBe("/new");
-    expect(result.sessionId).toBe(existingSessionId);
-    expect(result.isNewSession).toBe(false);
+    expect(result.sessionId).not.toBe(existingSessionId);
+    expect(result.isNewSession).toBe(true);
+    expect(result.bodyStripped).toBe("");
   });
 });
 

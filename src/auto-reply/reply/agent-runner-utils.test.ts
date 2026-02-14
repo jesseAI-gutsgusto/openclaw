@@ -6,7 +6,7 @@ import { buildThreadingToolContext } from "./agent-runner-utils.js";
 describe("buildThreadingToolContext", () => {
   const cfg = {} as OpenClawConfig;
 
-  it("uses conversation id for WhatsApp", () => {
+  it("falls back to To for WhatsApp when the channel dock is unavailable", () => {
     const sessionCtx = {
       Provider: "whatsapp",
       From: "123@g.us",
@@ -19,7 +19,7 @@ describe("buildThreadingToolContext", () => {
       hasRepliedRef: undefined,
     });
 
-    expect(result.currentChannelId).toBe("123@g.us");
+    expect(result.currentChannelId).toBe("+15550001");
   });
 
   it("falls back to To for WhatsApp when From is missing", () => {
@@ -53,7 +53,7 @@ describe("buildThreadingToolContext", () => {
     expect(result.currentChannelId).toBe("chat:99");
   });
 
-  it("uses the sender handle for iMessage direct chats", () => {
+  it("falls back to To for iMessage direct chats when the channel dock is unavailable", () => {
     const sessionCtx = {
       Provider: "imessage",
       ChatType: "direct",
@@ -67,7 +67,7 @@ describe("buildThreadingToolContext", () => {
       hasRepliedRef: undefined,
     });
 
-    expect(result.currentChannelId).toBe("imessage:+15550001");
+    expect(result.currentChannelId).toBe("chat_id:12");
   });
 
   it("uses chat_id for iMessage groups", () => {

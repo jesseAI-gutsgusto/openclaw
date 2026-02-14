@@ -314,7 +314,7 @@ describe("partial reply gating", () => {
     resetLoadConfigMock();
     await store.cleanup();
   });
-  it("defaults to self-only when no config is present", async () => {
+  it("does not enforce self-only in direct getReplyFromConfig calls with empty config", async () => {
     vi.mocked(runEmbeddedPiAgent).mockResolvedValue({
       payloads: [{ text: "ok" }],
       meta: {
@@ -323,8 +323,8 @@ describe("partial reply gating", () => {
       },
     });
 
-    // Not self: should be blocked
-    const blocked = await getReplyFromConfig(
+    // Non-self direct invocation is allowed here; web-side gating lives in monitor processing.
+    const nonSelf = await getReplyFromConfig(
       {
         Body: "hi",
         From: "whatsapp:+999",
@@ -333,8 +333,8 @@ describe("partial reply gating", () => {
       undefined,
       {},
     );
-    expect(blocked).toBeUndefined();
-    expect(runEmbeddedPiAgent).not.toHaveBeenCalled();
+    expect(nonSelf).toMatchObject({ text: "ok", audioAsVoice: false });
+    expect(runEmbeddedPiAgent).toHaveBeenCalledOnce();
 
     // Self: should be allowed
     const allowed = await getReplyFromConfig(
@@ -347,6 +347,6 @@ describe("partial reply gating", () => {
       {},
     );
     expect(allowed).toMatchObject({ text: "ok", audioAsVoice: false });
-    expect(runEmbeddedPiAgent).toHaveBeenCalledOnce();
+    expect(runEmbeddedPiAgent).toHaveBeenCalledTimes(2);
   });
 });

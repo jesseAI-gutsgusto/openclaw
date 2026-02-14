@@ -125,8 +125,6 @@ describe("gateway plugin HTTP auth boundary", () => {
         });
 
         const server = createGatewayHttpServer({
-          canvasHost: null,
-          clients: new Set(),
           controlUiEnabled: false,
           controlUiBasePath: "/__control__",
           openAiChatCompletionsEnabled: false,

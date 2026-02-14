@@ -125,7 +125,7 @@ describe("commands registry", () => {
     expect(
       shouldHandleTextCommands({
         cfg,
-        surface: "discord",
+        surface: "slack",
         commandSource: "text",
       }),
     ).toBe(false);
@@ -139,7 +139,7 @@ describe("commands registry", () => {
     expect(
       shouldHandleTextCommands({
         cfg,
-        surface: "discord",
+        surface: "slack",
         commandSource: "native",
       }),
     ).toBe(true);
@@ -166,7 +166,7 @@ describe("commands registry", () => {
   });
 
   it("normalizes dock command aliases", () => {
-    expect(normalizeCommandBody("/dock_telegram")).toBe("/dock-telegram");
+    expect(normalizeCommandBody("/dock_slack")).toBe("/dock-slack");
   });
 });
 

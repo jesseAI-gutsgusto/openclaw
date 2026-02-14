@@ -216,6 +216,7 @@ describe("createTelegramBot", () => {
 
   it("merges custom commands with native commands", () => {
     const config = {
+      commands: { native: true },
       channels: {
         telegram: {
           customCommands: [
@@ -248,6 +249,7 @@ describe("createTelegramBot", () => {
   it("ignores custom commands that collide with native commands", () => {
     const errorSpy = vi.fn();
     const config = {
+      commands: { native: true },
       channels: {
         telegram: {
           customCommands: [

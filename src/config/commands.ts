@@ -7,12 +7,7 @@ function resolveAutoDefault(providerId?: ChannelId): boolean {
   if (!id) {
     return false;
   }
-  if (id === "discord" || id === "telegram") {
-    return true;
-  }
-  if (id === "slack") {
-    return false;
-  }
+  // No retained core channels currently default native commands to "on".
   return false;
 }
 

@@ -1,0 +1,23 @@
+{
+  "name": "@openclaw/run-orchestrator",
+  "version": "2026.2.13",
+  "private": true,
+  "description": "Simple run state orchestration primitives for OpenClaw",
+  "license": "MIT",
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

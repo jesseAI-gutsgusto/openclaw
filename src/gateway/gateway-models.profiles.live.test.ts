@@ -496,7 +496,6 @@ async function runGatewayModelSuite(params: GatewayModelSuiteParams) {
     skipChannels: process.env.OPENCLAW_SKIP_CHANNELS,
     skipGmail: process.env.OPENCLAW_SKIP_GMAIL_WATCHER,
     skipCron: process.env.OPENCLAW_SKIP_CRON,
-    skipCanvas: process.env.OPENCLAW_SKIP_CANVAS_HOST,
     agentDir: process.env.OPENCLAW_AGENT_DIR,
     piAgentDir: process.env.PI_CODING_AGENT_DIR,
     stateDir: process.env.OPENCLAW_STATE_DIR,
@@ -507,7 +506,6 @@ async function runGatewayModelSuite(params: GatewayModelSuiteParams) {
   process.env.OPENCLAW_SKIP_CHANNELS = "1";
   process.env.OPENCLAW_SKIP_GMAIL_WATCHER = "1";
   process.env.OPENCLAW_SKIP_CRON = "1";
-  process.env.OPENCLAW_SKIP_CANVAS_HOST = "1";
 
   const token = `test-${randomUUID()}`;
   process.env.OPENCLAW_GATEWAY_TOKEN = token;
@@ -1002,7 +1000,6 @@ async function runGatewayModelSuite(params: GatewayModelSuiteParams) {
     process.env.OPENCLAW_SKIP_CHANNELS = previous.skipChannels;
     process.env.OPENCLAW_SKIP_GMAIL_WATCHER = previous.skipGmail;
     process.env.OPENCLAW_SKIP_CRON = previous.skipCron;
-    process.env.OPENCLAW_SKIP_CANVAS_HOST = previous.skipCanvas;
     process.env.OPENCLAW_AGENT_DIR = previous.agentDir;
     process.env.PI_CODING_AGENT_DIR = previous.piAgentDir;
     process.env.OPENCLAW_STATE_DIR = previous.stateDir;
@@ -1110,13 +1107,11 @@ describeLive("gateway live (dev agent, profile keys)", () => {
       skipChannels: process.env.OPENCLAW_SKIP_CHANNELS,
       skipGmail: process.env.OPENCLAW_SKIP_GMAIL_WATCHER,
       skipCron: process.env.OPENCLAW_SKIP_CRON,
-      skipCanvas: process.env.OPENCLAW_SKIP_CANVAS_HOST,
     };
 
     process.env.OPENCLAW_SKIP_CHANNELS = "1";
     process.env.OPENCLAW_SKIP_GMAIL_WATCHER = "1";
     process.env.OPENCLAW_SKIP_CRON = "1";
-    process.env.OPENCLAW_SKIP_CANVAS_HOST = "1";
 
     const token = `test-${randomUUID()}`;
     process.env.OPENCLAW_GATEWAY_TOKEN = token;
@@ -1241,7 +1236,6 @@ describeLive("gateway live (dev agent, profile keys)", () => {
       process.env.OPENCLAW_SKIP_CHANNELS = previous.skipChannels;
       process.env.OPENCLAW_SKIP_GMAIL_WATCHER = previous.skipGmail;
       process.env.OPENCLAW_SKIP_CRON = previous.skipCron;
-      process.env.OPENCLAW_SKIP_CANVAS_HOST = previous.skipCanvas;
     }
   }, 180_000);
 });

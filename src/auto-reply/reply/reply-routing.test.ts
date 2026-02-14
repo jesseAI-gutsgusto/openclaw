@@ -156,12 +156,12 @@ describe("createReplyDispatcher", () => {
 });
 
 describe("resolveReplyToMode", () => {
-  it("defaults to first for Telegram", () => {
-    expect(resolveReplyToMode(emptyCfg, "telegram")).toBe("first");
+  it("defaults to all for Telegram when no channel dock is loaded", () => {
+    expect(resolveReplyToMode(emptyCfg, "telegram")).toBe("all");
   });
 
-  it("defaults to off for Discord and Slack", () => {
-    expect(resolveReplyToMode(emptyCfg, "discord")).toBe("off");
+  it("defaults to all for Discord and off for Slack", () => {
+    expect(resolveReplyToMode(emptyCfg, "discord")).toBe("all");
     expect(resolveReplyToMode(emptyCfg, "slack")).toBe("off");
   });
 
@@ -169,7 +169,7 @@ describe("resolveReplyToMode", () => {
     expect(resolveReplyToMode(emptyCfg, undefined)).toBe("all");
   });
 
-  it("uses configured value when present", () => {
+  it("uses configured value for docked channels and fallback for unknown channels", () => {
     const cfg = {
       channels: {
         telegram: { replyToMode: "all" },
@@ -178,7 +178,7 @@ describe("resolveReplyToMode", () => {
       },
     } as OpenClawConfig;
     expect(resolveReplyToMode(cfg, "telegram")).toBe("all");
-    expect(resolveReplyToMode(cfg, "discord")).toBe("first");
+    expect(resolveReplyToMode(cfg, "discord")).toBe("all");
     expect(resolveReplyToMode(cfg, "slack")).toBe("all");
   });
 

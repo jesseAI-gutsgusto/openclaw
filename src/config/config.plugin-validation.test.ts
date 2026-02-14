@@ -142,7 +142,10 @@ describe("config plugin validation", () => {
     const home = await createCaseHome();
     const res = validateInHome(home, {
       agents: { list: [{ id: "pi" }] },
-      plugins: { enabled: false, entries: { discord: { enabled: true } } },
+      plugins: {
+        enabled: false,
+        entries: { slack: { enabled: true }, msteams: { enabled: true } },
+      },
     });
     expect(res.ok).toBe(true);
   });

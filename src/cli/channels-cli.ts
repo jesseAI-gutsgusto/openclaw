@@ -108,7 +108,7 @@ export function registerChannelsCli(program: Command) {
     .description("Show provider capabilities (intents/scopes + supported features)")
     .option("--channel <name>", `Channel (${formatCliChannelOptions(["all"])})`)
     .option("--account <id>", "Account id (only with --channel)")
-    .option("--target <dest>", "Channel target for permission audit (Discord channel:<id>)")
+    .option("--target <dest>", "Channel target for permission audit (channel-specific id format)")
     .option("--timeout <ms>", "Timeout in ms", "10000")
     .option("--json", "Output JSON", false)
     .action(async (opts) => {
@@ -212,7 +212,7 @@ export function registerChannelsCli(program: Command) {
   channels
     .command("login")
     .description("Link a channel account (if supported)")
-    .option("--channel <channel>", "Channel alias (default: whatsapp)")
+    .option("--channel <channel>", "Channel alias (default: slack)")
     .option("--account <id>", "Account id (accountId)")
     .option("--verbose", "Verbose connection logs", false)
     .action(async (opts) => {
@@ -231,7 +231,7 @@ export function registerChannelsCli(program: Command) {
   channels
     .command("logout")
     .description("Log out of a channel session (if supported)")
-    .option("--channel <channel>", "Channel alias (default: whatsapp)")
+    .option("--channel <channel>", "Channel alias (default: slack)")
     .option("--account <id>", "Account id (accountId)")
     .action(async (opts) => {
       await runChannelsCommandWithDanger(async () => {

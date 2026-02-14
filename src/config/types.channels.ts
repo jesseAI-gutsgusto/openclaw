@@ -1,13 +1,7 @@
-import type { GroupPolicy } from "./types.base.js";
-import type { DiscordConfig } from "./types.discord.js";
-import type { GoogleChatConfig } from "./types.googlechat.js";
-import type { IMessageConfig } from "./types.imessage.js";
-import type { IrcConfig } from "./types.irc.js";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { DmPolicy, GroupPolicy } from "./types.base.js";
 import type { MSTeamsConfig } from "./types.msteams.js";
-import type { SignalConfig } from "./types.signal.js";
 import type { SlackConfig } from "./types.slack.js";
-import type { TelegramConfig } from "./types.telegram.js";
-import type { WhatsAppConfig } from "./types.whatsapp.js";
 
 export type ChannelHeartbeatVisibilityConfig = {
   /** Show HEARTBEAT_OK acknowledgments in chat (default: false). */
@@ -28,27 +22,56 @@ export type ChannelDefaultsConfig = {
  * Base type for extension channel config sections.
  * Extensions can use this as a starting point for their channel config.
  */
-export type ExtensionChannelConfig = {
+type ExtensionChannelDmConfig = {
   enabled?: boolean;
-  allowFrom?: string | string[];
-  dmPolicy?: string;
+  policy?: DmPolicy;
+  allowFrom?: any[];
+  groupEnabled?: boolean;
+  groupChannels?: any[];
+  replyToMode?: "off" | "first" | "all";
+  [key: string]: any;
+};
+
+type ExtensionChannelAccountConfig = {
+  enabled?: boolean;
+  token?: string;
+  tokenFile?: string;
+  botToken?: string;
+  appToken?: string;
+  authDir?: string;
+  allowFrom?: any[];
+  groupAllowFrom?: any[];
+  dmPolicy?: DmPolicy;
   groupPolicy?: GroupPolicy;
-  accounts?: Record<string, unknown>;
-  [key: string]: unknown;
+  mediaMaxMb?: number;
+  chunkMode?: "length" | "newline";
+  historyLimit?: number;
+  replyToMode?: "off" | "first" | "all";
+  dm?: ExtensionChannelDmConfig;
+  [key: string]: any;
+};
+
+export type ExtensionChannelConfig = ExtensionChannelAccountConfig & {
+  accounts?: Record<string, ExtensionChannelAccountConfig>;
+  guilds?: Record<string, any>;
+  channels?: Record<string, any>;
+  teams?: Record<string, any>;
+  ackReaction?: {
+    emoji?: string;
+    direct?: boolean;
+    group?: "never" | "mentions" | "always";
+  };
+  webhook?: {
+    path?: string;
+    port?: number;
+    [key: string]: any;
+  };
 };
 
 export type ChannelsConfig = {
   defaults?: ChannelDefaultsConfig;
-  whatsapp?: WhatsAppConfig;
-  telegram?: TelegramConfig;
-  discord?: DiscordConfig;
-  irc?: IrcConfig;
-  googlechat?: GoogleChatConfig;
   slack?: SlackConfig;
-  signal?: SignalConfig;
-  imessage?: IMessageConfig;
   msteams?: MSTeamsConfig;
   // Extension channels use dynamic keys - use ExtensionChannelConfig in extensions
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any;
+  [key: string]: ExtensionChannelConfig | undefined;
 };

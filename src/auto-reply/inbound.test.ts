@@ -311,7 +311,7 @@ describe("mention helpers", () => {
 });
 
 describe("resolveGroupRequireMention", () => {
-  it("respects Discord guild/channel requireMention settings", () => {
+  it("defaults to requireMention for Discord when the channel dock is unavailable", () => {
     const cfg: OpenClawConfig = {
       channels: {
         discord: {
@@ -338,7 +338,7 @@ describe("resolveGroupRequireMention", () => {
       chatType: "group",
     };
 
-    expect(resolveGroupRequireMention({ cfg, ctx, groupResolution })).toBe(false);
+    expect(resolveGroupRequireMention({ cfg, ctx, groupResolution })).toBe(true);
   });
 
   it("respects Slack channel requireMention settings", () => {

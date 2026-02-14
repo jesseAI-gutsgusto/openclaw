@@ -23,7 +23,7 @@ describe("resolveChannelCapabilities", () => {
   it("normalizes and prefers per-account capabilities", () => {
     const cfg = {
       channels: {
-        telegram: {
+        slack: {
           capabilities: [" inlineButtons ", ""],
           accounts: {
             default: {
@@ -37,7 +37,7 @@ describe("resolveChannelCapabilities", () => {
     expect(
       resolveChannelCapabilities({
         cfg,
-        channel: "telegram",
+        channel: "slack",
         accountId: "default",
       }),
     ).toEqual(["perAccount"]);
@@ -46,7 +46,7 @@ describe("resolveChannelCapabilities", () => {
   it("falls back to provider capabilities when account capabilities are missing", () => {
     const cfg = {
       channels: {
-        telegram: {
+        slack: {
           capabilities: ["inlineButtons"],
           accounts: {
             default: {},
@@ -58,7 +58,7 @@ describe("resolveChannelCapabilities", () => {
     expect(
       resolveChannelCapabilities({
         cfg,
-        channel: "telegram",
+        channel: "slack",
         accountId: "default",
       }),
     ).toEqual(["inlineButtons"]);
@@ -109,19 +109,17 @@ describe("resolveChannelCapabilities", () => {
   it("handles object-format capabilities gracefully (e.g., { inlineButtons: 'dm' })", () => {
     const cfg = {
       channels: {
-        telegram: {
-          // Object format - used for granular control like inlineButtons scope.
-          // Channel-specific handlers (resolveTelegramInlineButtonsScope) process these.
+        slack: {
+          // Object format should be ignored without throwing.
           capabilities: { inlineButtons: "dm" },
         },
       },
     };
 
-    // Should return undefined (not crash), allowing channel-specific handlers to process it.
     expect(
       resolveChannelCapabilities({
         cfg,
-        channel: "telegram",
+        channel: "slack",
       }),
     ).toBeUndefined();
   });
@@ -157,7 +155,6 @@ const createStubPlugin = (id: string): ChannelPlugin => ({
 });
 
 const baseRegistry = createRegistry([
-  { pluginId: "telegram", source: "test", plugin: createStubPlugin("telegram") },
   { pluginId: "slack", source: "test", plugin: createStubPlugin("slack") },
 ]);
 

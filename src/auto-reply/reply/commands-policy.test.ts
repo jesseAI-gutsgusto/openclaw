@@ -41,7 +41,7 @@ vi.mock("../../channels/plugins/pairing.js", async () => {
   );
   return {
     ...actual,
-    listPairingChannels: () => ["telegram"],
+    listPairingChannels: () => ["msteams"],
   };
 });
 
@@ -61,8 +61,8 @@ function buildParams(commandBody: string, cfg: OpenClawConfig, ctxOverrides?: Pa
     CommandBody: commandBody,
     CommandSource: "text",
     CommandAuthorized: true,
-    Provider: "telegram",
-    Surface: "telegram",
+    Provider: "slack",
+    Surface: "slack",
     ...ctxOverrides,
   } as MsgContext;
 
@@ -86,7 +86,7 @@ function buildParams(commandBody: string, cfg: OpenClawConfig, ctxOverrides?: Pa
     resolvedVerboseLevel: "off" as const,
     resolvedReasoningLevel: "off" as const,
     resolveDefaultThinkingLevel: async () => undefined,
-    provider: "telegram",
+    provider: "slack",
     model: "test-model",
     contextTokens: 0,
     isGroup: false,
@@ -99,14 +99,17 @@ describe("handleCommands /allowlist", () => {
 
     const cfg = {
       commands: { text: true },
-      channels: { telegram: { allowFrom: ["123", "@Alice"] } },
+      channels: { msteams: { allowFrom: ["123", "@Alice"] } },
     } as OpenClawConfig;
-    const params = buildParams("/allowlist list dm", cfg);
+    const params = buildParams("/allowlist list dm", cfg, {
+      Provider: "msteams",
+      Surface: "msteams",
+    });
     const result = await handleCommands(params);
 
     expect(result.shouldContinue).toBe(false);
-    expect(result.reply?.text).toContain("Channel: telegram");
-    expect(result.reply?.text).toContain("DM allowFrom (config): 123, @alice");
+    expect(result.reply?.text).toContain("Channel: msteams");
+    expect(result.reply?.text).toContain("DM allowFrom (config): 123, @Alice");
     expect(result.reply?.text).toContain("Paired allowFrom (store): 456");
   });
 
@@ -114,7 +117,7 @@ describe("handleCommands /allowlist", () => {
     readConfigFileSnapshotMock.mockResolvedValueOnce({
       valid: true,
       parsed: {
-        channels: { telegram: { allowFrom: ["123"] } },
+        channels: { msteams: { allowFrom: ["123"] } },
       },
     });
     validateConfigObjectWithPluginsMock.mockImplementation((config: unknown) => ({
@@ -128,19 +131,22 @@ describe("handleCommands /allowlist", () => {
 
     const cfg = {
       commands: { text: true, config: true },
-      channels: { telegram: { allowFrom: ["123"] } },
+      channels: { msteams: { allowFrom: ["123"] } },
     } as OpenClawConfig;
-    const params = buildParams("/allowlist add dm 789", cfg);
+    const params = buildParams("/allowlist add dm 789", cfg, {
+      Provider: "msteams",
+      Surface: "msteams",
+    });
     const result = await handleCommands(params);
 
     expect(result.shouldContinue).toBe(false);
     expect(writeConfigFileMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        channels: { telegram: { allowFrom: ["123", "789"] } },
+        channels: { msteams: { allowFrom: ["123", "789"] } },
       }),
     );
     expect(addChannelAllowFromStoreEntryMock).toHaveBeenCalledWith({
-      channel: "telegram",
+      channel: "msteams",
       entry: "789",
     });
     expect(result.reply?.text).toContain("DM allowlist added");
@@ -153,7 +159,7 @@ describe("/models command", () => {
     agents: { defaults: { model: { primary: "anthropic/claude-opus-4-5" } } },
   } as unknown as OpenClawConfig;
 
-  it.each(["discord", "whatsapp"])("lists providers on %s (text)", async (surface) => {
+  it.each(["slack", "msteams"])("lists providers on %s (text)", async (surface) => {
     const params = buildParams("/models", cfg, { Provider: surface, Surface: surface });
     const result = await handleCommands(params);
     expect(result.shouldContinue).toBe(false);
@@ -162,20 +168,8 @@ describe("/models command", () => {
     expect(result.reply?.text).toContain("Use: /models <provider>");
   });
 
-  it("lists providers on telegram (buttons)", async () => {
-    const params = buildParams("/models", cfg, { Provider: "telegram", Surface: "telegram" });
-    const result = await handleCommands(params);
-    expect(result.shouldContinue).toBe(false);
-    expect(result.reply?.text).toBe("Select a provider:");
-    const buttons = (result.reply?.channelData as { telegram?: { buttons?: unknown[][] } })
-      ?.telegram?.buttons;
-    expect(buttons).toBeDefined();
-    expect(buttons?.length).toBeGreaterThan(0);
-  });
-
   it("lists provider models with pagination hints", async () => {
-    // Use discord surface for text-based output tests
-    const params = buildParams("/models anthropic", cfg, { Surface: "discord" });
+    const params = buildParams("/models anthropic", cfg, { Surface: "slack" });
     const result = await handleCommands(params);
     expect(result.shouldContinue).toBe(false);
     expect(result.reply?.text).toContain("Models (anthropic)");
@@ -186,8 +180,7 @@ describe("/models command", () => {
   });
 
   it("ignores page argument when all flag is present", async () => {
-    // Use discord surface for text-based output tests
-    const params = buildParams("/models anthropic 3 all", cfg, { Surface: "discord" });
+    const params = buildParams("/models anthropic 3 all", cfg, { Surface: "slack" });
     const result = await handleCommands(params);
     expect(result.shouldContinue).toBe(false);
     expect(result.reply?.text).toContain("Models (anthropic)");
@@ -197,8 +190,7 @@ describe("/models command", () => {
   });
 
   it("errors on out-of-range pages", async () => {
-    // Use discord surface for text-based output tests
-    const params = buildParams("/models anthropic 4", cfg, { Surface: "discord" });
+    const params = buildParams("/models anthropic 4", cfg, { Surface: "slack" });
     const result = await handleCommands(params);
     expect(result.shouldContinue).toBe(false);
     expect(result.reply?.text).toContain("Page out of range");
@@ -227,15 +219,14 @@ describe("/models command", () => {
       },
     } as unknown as OpenClawConfig;
 
-    // Use discord surface for text-based output tests
     const providerList = await handleCommands(
-      buildParams("/models", customCfg, { Surface: "discord" }),
+      buildParams("/models", customCfg, { Surface: "slack" }),
     );
     expect(providerList.reply?.text).toContain("localai");
     expect(providerList.reply?.text).toContain("visionpro");
 
     const result = await handleCommands(
-      buildParams("/models localai", customCfg, { Surface: "discord" }),
+      buildParams("/models localai", customCfg, { Surface: "slack" }),
     );
     expect(result.shouldContinue).toBe(false);
     expect(result.reply?.text).toContain("Models (localai)");

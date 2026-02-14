@@ -5,16 +5,10 @@ describe("resolveNativeSkillsEnabled", () => {
   it("uses provider defaults for auto", () => {
     expect(
       resolveNativeSkillsEnabled({
-        providerId: "discord",
+        providerId: "msteams",
         globalSetting: "auto",
       }),
-    ).toBe(true);
-    expect(
-      resolveNativeSkillsEnabled({
-        providerId: "telegram",
-        globalSetting: "auto",
-      }),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       resolveNativeSkillsEnabled({
         providerId: "slack",
@@ -23,7 +17,7 @@ describe("resolveNativeSkillsEnabled", () => {
     ).toBe(false);
     expect(
       resolveNativeSkillsEnabled({
-        providerId: "whatsapp",
+        providerId: "voice-call",
         globalSetting: "auto",
       }),
     ).toBe(false);
@@ -39,7 +33,7 @@ describe("resolveNativeSkillsEnabled", () => {
     ).toBe(true);
     expect(
       resolveNativeSkillsEnabled({
-        providerId: "discord",
+        providerId: "msteams",
         providerSetting: false,
         globalSetting: true,
       }),

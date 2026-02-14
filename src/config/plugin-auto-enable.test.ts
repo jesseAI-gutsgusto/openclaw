@@ -29,7 +29,7 @@ describe("applyPluginAutoEnable", () => {
     expect(result.changes).toEqual([]);
   });
 
-  it("configures irc as disabled when configured via env", () => {
+  it("does not auto-configure irc when the plugin is not bundled", () => {
     const result = applyPluginAutoEnable({
       config: {},
       env: {
@@ -38,8 +38,8 @@ describe("applyPluginAutoEnable", () => {
       },
     });
 
-    expect(result.config.plugins?.entries?.irc?.enabled).toBe(false);
-    expect(result.changes.join("\n")).toContain("IRC configured, not enabled yet.");
+    expect(result.config.plugins?.entries?.irc?.enabled).toBeUndefined();
+    expect(result.changes.join("\n")).not.toContain("IRC configured, not enabled yet.");
   });
 
   it("configures provider auth plugins as disabled when profiles exist", () => {
@@ -73,83 +73,71 @@ describe("applyPluginAutoEnable", () => {
     expect(result.changes).toEqual([]);
   });
 
-  describe("preferOver channel prioritization", () => {
-    it("prefers bluebubbles: skips imessage auto-configure when both are configured", () => {
+  describe("retained channel auto-enable behavior", () => {
+    it("auto-configures both slack and msteams when both are configured", () => {
       const result = applyPluginAutoEnable({
         config: {
           channels: {
-            bluebubbles: { serverUrl: "http://localhost:1234", password: "x" },
-            imessage: { cliPath: "/usr/local/bin/imsg" },
+            slack: { botToken: "x" },
+            msteams: { tenantId: "tenant-a" },
           },
         },
         env: {},
       });
 
-      expect(result.config.plugins?.entries?.bluebubbles?.enabled).toBe(false);
-      expect(result.config.plugins?.entries?.imessage?.enabled).toBeUndefined();
-      expect(result.changes.join("\n")).toContain("bluebubbles configured, not enabled yet.");
-      expect(result.changes.join("\n")).not.toContain("iMessage configured, not enabled yet.");
+      expect(result.config.plugins?.entries?.slack?.enabled).toBe(false);
+      expect(result.config.plugins?.entries?.msteams?.enabled).toBe(false);
+      expect(result.changes.join("\n")).toContain("Slack configured, not enabled yet.");
+      expect(result.changes.join("\n")).toContain("Microsoft Teams configured, not enabled yet.");
     });
 
-    it("keeps imessage enabled if already explicitly enabled (non-destructive)", () => {
+    it("keeps explicitly enabled entries unchanged while auto-configuring others", () => {
       const result = applyPluginAutoEnable({
         config: {
           channels: {
-            bluebubbles: { serverUrl: "http://localhost:1234", password: "x" },
-            imessage: { cliPath: "/usr/local/bin/imsg" },
+            slack: { botToken: "x" },
+            msteams: { tenantId: "tenant-a" },
           },
-          plugins: { entries: { imessage: { enabled: true } } },
+          plugins: { entries: { slack: { enabled: true } } },
         },
         env: {},
       });
 
-      expect(result.config.plugins?.entries?.bluebubbles?.enabled).toBe(false);
-      expect(result.config.plugins?.entries?.imessage?.enabled).toBe(true);
+      expect(result.config.plugins?.entries?.slack?.enabled).toBe(true);
+      expect(result.config.plugins?.entries?.msteams?.enabled).toBe(false);
     });
 
-    it("allows imessage auto-configure when bluebubbles is explicitly disabled", () => {
+    it("respects explicit disable for msteams", () => {
       const result = applyPluginAutoEnable({
         config: {
           channels: {
-            bluebubbles: { serverUrl: "http://localhost:1234", password: "x" },
-            imessage: { cliPath: "/usr/local/bin/imsg" },
+            slack: { botToken: "x" },
+            msteams: { tenantId: "tenant-a" },
           },
-          plugins: { entries: { bluebubbles: { enabled: false } } },
+          plugins: { entries: { msteams: { enabled: false } } },
         },
         env: {},
       });
 
-      expect(result.config.plugins?.entries?.bluebubbles?.enabled).toBe(false);
-      expect(result.config.plugins?.entries?.imessage?.enabled).toBe(false);
-      expect(result.changes.join("\n")).toContain("iMessage configured, not enabled yet.");
+      expect(result.config.plugins?.entries?.slack?.enabled).toBe(false);
+      expect(result.config.plugins?.entries?.msteams?.enabled).toBe(false);
+      expect(result.changes.join("\n")).not.toContain("msteams configured, not enabled yet.");
     });
 
-    it("allows imessage auto-configure when bluebubbles is in deny list", () => {
+    it("skips msteams when it is deny-listed", () => {
       const result = applyPluginAutoEnable({
         config: {
           channels: {
-            bluebubbles: { serverUrl: "http://localhost:1234", password: "x" },
-            imessage: { cliPath: "/usr/local/bin/imsg" },
+            slack: { botToken: "x" },
+            msteams: { tenantId: "tenant-a" },
           },
-          plugins: { deny: ["bluebubbles"] },
+          plugins: { deny: ["msteams"] },
         },
         env: {},
       });
 
-      expect(result.config.plugins?.entries?.bluebubbles?.enabled).toBeUndefined();
-      expect(result.config.plugins?.entries?.imessage?.enabled).toBe(false);
-    });
-
-    it("configures imessage as disabled when only imessage is configured", () => {
-      const result = applyPluginAutoEnable({
-        config: {
-          channels: { imessage: { cliPath: "/usr/local/bin/imsg" } },
-        },
-        env: {},
-      });
-
-      expect(result.config.plugins?.entries?.imessage?.enabled).toBe(false);
-      expect(result.changes.join("\n")).toContain("iMessage configured, not enabled yet.");
+      expect(result.config.plugins?.entries?.slack?.enabled).toBe(false);
+      expect(result.config.plugins?.entries?.msteams?.enabled).toBeUndefined();
     });
   });
 });

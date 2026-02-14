@@ -73,7 +73,7 @@ describe("resolveCommandAuthorization", () => {
     expect(auth.isAuthorizedSender).toBe(true);
   });
 
-  it("falls back to From when SenderId and SenderE164 are whitespace", () => {
+  it("falls back to raw From when SenderId and SenderE164 are whitespace", () => {
     const cfg = {
       channels: { whatsapp: { allowFrom: ["+999"] } },
     } as OpenClawConfig;
@@ -92,11 +92,11 @@ describe("resolveCommandAuthorization", () => {
       commandAuthorized: true,
     });
 
-    expect(auth.senderId).toBe("+999");
+    expect(auth.senderId).toBe("whatsapp:+999");
     expect(auth.isAuthorizedSender).toBe(true);
   });
 
-  it("falls back from un-normalizable SenderId to SenderE164", () => {
+  it("keeps SenderId when provider dock is unavailable", () => {
     const cfg = {
       channels: { whatsapp: { allowFrom: ["+123"] } },
     } as OpenClawConfig;
@@ -115,11 +115,11 @@ describe("resolveCommandAuthorization", () => {
       commandAuthorized: true,
     });
 
-    expect(auth.senderId).toBe("+123");
+    expect(auth.senderId).toBe("wat");
     expect(auth.isAuthorizedSender).toBe(true);
   });
 
-  it("prefers SenderE164 when SenderId does not match allowFrom", () => {
+  it("prefers SenderId when provider dock is unavailable", () => {
     const cfg = {
       channels: { whatsapp: { allowFrom: ["+41796666864"] } },
     } as OpenClawConfig;
@@ -138,7 +138,7 @@ describe("resolveCommandAuthorization", () => {
       commandAuthorized: true,
     });
 
-    expect(auth.senderId).toBe("+41796666864");
+    expect(auth.senderId).toBe("123@lid");
     expect(auth.isAuthorizedSender).toBe(true);
   });
 
@@ -295,7 +295,7 @@ describe("resolveCommandAuthorization", () => {
       expect(unauthorizedAuth.isAuthorizedSender).toBe(false);
     });
 
-    it("uses commands.allowFrom provider-specific list over global", () => {
+    it("falls back to commands.allowFrom global list when provider cannot be resolved", () => {
       const cfg = {
         commands: {
           allowFrom: {
@@ -320,10 +320,10 @@ describe("resolveCommandAuthorization", () => {
         commandAuthorized: true,
       });
 
-      // Provider-specific list overrides global, so globaluser is not authorized
-      expect(globalAuth.isAuthorizedSender).toBe(false);
+      // Without a resolved provider plugin, only the global list is applied.
+      expect(globalAuth.isAuthorizedSender).toBe(true);
 
-      // User in whatsapp-specific list
+      // Provider-specific keys are ignored when the provider cannot be resolved.
       const whatsappUserCtx = {
         Provider: "whatsapp",
         Surface: "whatsapp",
@@ -337,7 +337,7 @@ describe("resolveCommandAuthorization", () => {
         commandAuthorized: true,
       });
 
-      expect(whatsappAuth.isAuthorizedSender).toBe(true);
+      expect(whatsappAuth.isAuthorizedSender).toBe(false);
     });
 
     it("falls back to channel allowFrom when commands.allowFrom not set", () => {

@@ -209,7 +209,6 @@ describeLive("gateway live (cli backend)", () => {
       skipChannels: process.env.OPENCLAW_SKIP_CHANNELS,
       skipGmail: process.env.OPENCLAW_SKIP_GMAIL_WATCHER,
       skipCron: process.env.OPENCLAW_SKIP_CRON,
-      skipCanvas: process.env.OPENCLAW_SKIP_CANVAS_HOST,
       anthropicApiKey: process.env.ANTHROPIC_API_KEY,
       anthropicApiKeyOld: process.env.ANTHROPIC_API_KEY_OLD,
     };
@@ -217,7 +216,6 @@ describeLive("gateway live (cli backend)", () => {
     process.env.OPENCLAW_SKIP_CHANNELS = "1";
     process.env.OPENCLAW_SKIP_GMAIL_WATCHER = "1";
     process.env.OPENCLAW_SKIP_CRON = "1";
-    process.env.OPENCLAW_SKIP_CANVAS_HOST = "1";
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.ANTHROPIC_API_KEY_OLD;
 
@@ -448,11 +446,6 @@ describeLive("gateway live (cli backend)", () => {
         delete process.env.OPENCLAW_SKIP_CRON;
       } else {
         process.env.OPENCLAW_SKIP_CRON = previous.skipCron;
-      }
-      if (previous.skipCanvas === undefined) {
-        delete process.env.OPENCLAW_SKIP_CANVAS_HOST;
-      } else {
-        process.env.OPENCLAW_SKIP_CANVAS_HOST = previous.skipCanvas;
       }
       if (previous.anthropicApiKey === undefined) {
         delete process.env.ANTHROPIC_API_KEY;

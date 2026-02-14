@@ -36,7 +36,6 @@ import {
   parseCardParam,
   readBooleanParam,
   resolveSlackAutoThreadId,
-  resolveTelegramAutoThreadId,
 } from "./message-action-params.js";
 import { actionHasTarget, actionRequiresTarget } from "./message-action-spec.js";
 import {
@@ -361,7 +360,7 @@ async function handleBroadcastAction(
   }
   return {
     kind: "broadcast",
-    channel: targetChannels[0] ?? "discord",
+    channel: targetChannels[0] ?? "slack",
     action: "broadcast",
     handledBy: input.dryRun ? "dry-run" : "core",
     payload: { results },
@@ -454,12 +453,6 @@ async function handleSendAction(ctx: ResolvedActionContext): Promise<MessageActi
   });
 
   const mediaUrl = readStringParam(params, "media", { trim: false });
-  if (channel === "whatsapp") {
-    message = message.replace(/^(?:[ \t]*\r?\n)+/, "");
-    if (!message.trim()) {
-      message = "";
-    }
-  }
   if (!message.trim() && !mediaUrl && mergedMediaUrls.length === 0 && !hasCard) {
     throw new Error("send requires text or media");
   }
@@ -475,12 +468,7 @@ async function handleSendAction(ctx: ResolvedActionContext): Promise<MessageActi
     channel === "slack" && !replyToId && !threadId
       ? resolveSlackAutoThreadId({ to, toolContext: input.toolContext })
       : undefined;
-  // Telegram forum topic auto-threading: inject threadId so media/buttons land in the correct topic.
-  const telegramAutoThreadId =
-    channel === "telegram" && !threadId
-      ? resolveTelegramAutoThreadId({ to, toolContext: input.toolContext })
-      : undefined;
-  const resolvedThreadId = threadId ?? slackAutoThreadId ?? telegramAutoThreadId;
+  const resolvedThreadId = threadId ?? slackAutoThreadId;
   // Write auto-resolved threadId back into params so downstream dispatch
   // (plugin `readStringParam(params, "threadId")`) picks it up.
   if (resolvedThreadId && !params.threadId) {

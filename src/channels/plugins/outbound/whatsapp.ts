@@ -3,7 +3,29 @@ import { chunkText } from "../../../auto-reply/chunk.js";
 import { shouldLogVerbose } from "../../../globals.js";
 import { missingTargetError } from "../../../infra/outbound/target-errors.js";
 import { sendPollWhatsApp } from "../../../web/outbound.js";
-import { isWhatsAppGroupJid, normalizeWhatsAppTarget } from "../../../whatsapp/normalize.js";
+
+function isWhatsAppGroupJid(value: string): boolean {
+  return /@g\.us$/i.test(value.trim());
+}
+
+function normalizeWhatsAppTarget(raw: string): string | undefined {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const withoutPrefix = trimmed.replace(/^whatsapp:/i, "").trim();
+  if (!withoutPrefix) {
+    return undefined;
+  }
+  if (/@(?:g|s)\.us$/i.test(withoutPrefix)) {
+    return withoutPrefix.toLowerCase();
+  }
+  const digits = withoutPrefix.replace(/\D/g, "");
+  if (digits.length < 3) {
+    return undefined;
+  }
+  return `+${digits}`;
+}
 
 export const whatsappOutbound: ChannelOutboundAdapter = {
   deliveryMode: "gateway",

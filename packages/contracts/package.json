@@ -1,0 +1,38 @@
+{
+  "name": "@openclaw/contracts",
+  "version": "0.1.0",
+  "description": "Minimal shared contracts for OpenClaw run, tooling, policy, and plugin surfaces",
+  "license": "MIT",
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./run": {
+      "types": "./src/run.ts",
+      "default": "./src/run.ts"
+    },
+    "./tooling": {
+      "types": "./src/tooling.ts",
+      "default": "./src/tooling.ts"
+    },
+    "./policy": {
+      "types": "./src/policy.ts",
+      "default": "./src/policy.ts"
+    },
+    "./plugin": {
+      "types": "./src/plugin.ts",
+      "default": "./src/plugin.ts"
+    }
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

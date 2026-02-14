@@ -7,7 +7,6 @@ import { WebSocket } from "ws";
 import type { ChannelOutboundAdapter } from "../channels/plugins/types.js";
 import type { PluginRegistry } from "../plugins/registry.js";
 import { getChannelPlugin } from "../channels/plugins/index.js";
-import { resolveCanvasHostUrl } from "../infra/canvas-host-url.js";
 import { GatewayLockError } from "../infra/gateway-lock.js";
 import { getActivePluginRegistry, setActivePluginRegistry } from "../plugins/runtime.js";
 import { createOutboundTestPlugin } from "../test-utils/channel-plugins.js";
@@ -22,8 +21,6 @@ import {
   rpcReq,
   startGatewayServer,
   startServerWithClient,
-  testState,
-  testTailnetIPv4,
 } from "./test-helpers.js";
 
 installGatewayTestHooks({ scope: "suite" });
@@ -313,35 +310,6 @@ describe("gateway server models + voicewake", () => {
 });
 
 describe("gateway server misc", () => {
-  test("hello-ok advertises the gateway port for canvas host", async () => {
-    const prevToken = process.env.OPENCLAW_GATEWAY_TOKEN;
-    const prevCanvasPort = process.env.OPENCLAW_CANVAS_HOST_PORT;
-    process.env.OPENCLAW_GATEWAY_TOKEN = "secret";
-    testTailnetIPv4.value = "100.64.0.1";
-    testState.gatewayBind = "lan";
-    const canvasPort = await getFreePort();
-    testState.canvasHostPort = canvasPort;
-    process.env.OPENCLAW_CANVAS_HOST_PORT = String(canvasPort);
-
-    const testPort = await getFreePort();
-    const canvasHostUrl = resolveCanvasHostUrl({
-      canvasPort,
-      requestHost: `100.64.0.1:${testPort}`,
-      localAddress: "127.0.0.1",
-    });
-    expect(canvasHostUrl).toBe(`http://100.64.0.1:${canvasPort}`);
-    if (prevToken === undefined) {
-      delete process.env.OPENCLAW_GATEWAY_TOKEN;
-    } else {
-      process.env.OPENCLAW_GATEWAY_TOKEN = prevToken;
-    }
-    if (prevCanvasPort === undefined) {
-      delete process.env.OPENCLAW_CANVAS_HOST_PORT;
-    } else {
-      process.env.OPENCLAW_CANVAS_HOST_PORT = prevCanvasPort;
-    }
-  });
-
   test("send dedupes by idempotencyKey", { timeout: 60_000 }, async () => {
     const prevRegistry = getActivePluginRegistry() ?? emptyRegistry;
     try {

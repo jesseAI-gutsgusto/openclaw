@@ -1,0 +1,10 @@
+{
+  "name": "@openclaw/policy",
+  "version": "2026.2.13",
+  "private": true,
+  "description": "Minimal policy core for OpenClaw",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

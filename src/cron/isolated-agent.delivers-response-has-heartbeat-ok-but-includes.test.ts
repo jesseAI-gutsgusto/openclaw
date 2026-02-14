@@ -5,7 +5,7 @@ import type { CliDeps } from "../cli/deps.js";
 import type { OpenClawConfig } from "../config/config.js";
 import type { CronJob } from "./types.js";
 import { withTempHome as withTempHomeBase } from "../../test/helpers/temp-home.js";
-import { telegramOutbound } from "../channels/plugins/outbound/telegram.js";
+import { slackOutbound } from "../channels/plugins/outbound/slack.js";
 import { setActivePluginRegistry } from "../plugins/runtime.js";
 import { createOutboundTestPlugin, createTestRegistry } from "../test-utils/channel-plugins.js";
 
@@ -94,8 +94,8 @@ describe("runCronIsolatedAgentTurn", () => {
     setActivePluginRegistry(
       createTestRegistry([
         {
-          pluginId: "telegram",
-          plugin: createOutboundTestPlugin({ id: "telegram", outbound: telegramOutbound }),
+          pluginId: "slack",
+          plugin: createOutboundTestPlugin({ id: "slack", outbound: slackOutbound }),
           source: "test",
         },
       ]),
@@ -106,14 +106,10 @@ describe("runCronIsolatedAgentTurn", () => {
     await withTempHome(async (home) => {
       const storePath = await writeSessionStore(home);
       const deps: CliDeps = {
-        sendMessageWhatsApp: vi.fn(),
-        sendMessageTelegram: vi.fn().mockResolvedValue({
+        sendMessageSlack: vi.fn().mockResolvedValue({
           messageId: "t1",
-          chatId: "123",
+          channelId: "C123",
         }),
-        sendMessageDiscord: vi.fn(),
-        sendMessageSignal: vi.fn(),
-        sendMessageIMessage: vi.fn(),
       };
       // Media should still be delivered even if text is just HEARTBEAT_OK.
       vi.mocked(runEmbeddedPiAgent).mockResolvedValue({
@@ -132,7 +128,7 @@ describe("runCronIsolatedAgentTurn", () => {
             kind: "agentTurn",
             message: "do it",
           }),
-          delivery: { mode: "announce", channel: "telegram", to: "123" },
+          delivery: { mode: "announce", channel: "slack", to: "channel:C123" },
         },
         message: "do it",
         sessionKey: "cron:job-1",
@@ -140,7 +136,7 @@ describe("runCronIsolatedAgentTurn", () => {
       });
 
       expect(res.status).toBe("ok");
-      expect(deps.sendMessageTelegram).toHaveBeenCalled();
+      expect(deps.sendMessageSlack).toHaveBeenCalled();
       expect(runSubagentAnnounceFlow).not.toHaveBeenCalled();
     });
   });
@@ -149,14 +145,10 @@ describe("runCronIsolatedAgentTurn", () => {
     await withTempHome(async (home) => {
       const storePath = await writeSessionStore(home);
       const deps: CliDeps = {
-        sendMessageWhatsApp: vi.fn(),
-        sendMessageTelegram: vi.fn().mockResolvedValue({
+        sendMessageSlack: vi.fn().mockResolvedValue({
           messageId: "t1",
-          chatId: "123",
+          channelId: "C123",
         }),
-        sendMessageDiscord: vi.fn(),
-        sendMessageSignal: vi.fn(),
-        sendMessageIMessage: vi.fn(),
       };
       vi.mocked(runEmbeddedPiAgent).mockResolvedValue({
         payloads: [{ text: "HEARTBEAT_OK 🦞" }],
@@ -183,7 +175,7 @@ describe("runCronIsolatedAgentTurn", () => {
             kind: "agentTurn",
             message: "do it",
           }),
-          delivery: { mode: "announce", channel: "telegram", to: "123" },
+          delivery: { mode: "announce", channel: "slack", to: "channel:C123" },
         },
         message: "do it",
         sessionKey: "cron:job-1",
@@ -192,7 +184,7 @@ describe("runCronIsolatedAgentTurn", () => {
 
       expect(res.status).toBe("ok");
       expect(runSubagentAnnounceFlow).toHaveBeenCalledTimes(1);
-      expect(deps.sendMessageTelegram).not.toHaveBeenCalled();
+      expect(deps.sendMessageSlack).not.toHaveBeenCalled();
     });
   });
 });

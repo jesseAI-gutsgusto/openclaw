@@ -2,7 +2,23 @@ packages:
   - .
   - ui
   - packages/*
-  - extensions/*
+  - extensions/slack
+  - extensions/msteams
+  - extensions/memory-core
+  - extensions/memory-lancedb
+  - extensions/diagnostics-otel
+  - extensions/open-prose
+  - extensions/llm-task
+  - extensions/lobster
+  - extensions/voice-call
+  - extensions/phone-control
+  - extensions/google-antigravity-auth
+  - extensions/google-gemini-cli-auth
+  - extensions/minimax-portal-auth
+  - extensions/qwen-portal-auth
+  - extensions/copilot-proxy
+  - extensions/device-pair
+  - extensions/talk-voice
 
 onlyBuiltDependencies:
   - "@lydell/node-pty"

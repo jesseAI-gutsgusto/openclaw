@@ -5,8 +5,6 @@ import type {
   ChannelPlugin,
 } from "../channels/plugins/types.js";
 import type { PluginRegistry } from "../plugins/registry.js";
-import { imessageOutbound } from "../channels/plugins/outbound/imessage.js";
-import { normalizeIMessageHandle } from "../imessage/targets.js";
 
 export const createTestRegistry = (channels: PluginRegistry["channels"] = []): PluginRegistry => ({
   plugins: [],
@@ -23,6 +21,95 @@ export const createTestRegistry = (channels: PluginRegistry["channels"] = []): P
   commands: [],
   diagnostics: [],
 });
+
+const IMESSAGE_CHAT_PREFIX =
+  /^(chat_id:|chatid:|chat:|chat_guid:|chatguid:|guid:|chat_identifier:|chatidentifier:|chatident:)/i;
+
+function normalizeIMessageTestTarget(raw: string): string | undefined {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const normalizeWithPrefix = (prefix: "imessage:" | "sms:" | "auto:") => {
+    const remainder = trimmed.slice(prefix.length).trim();
+    const normalized = normalizeIMessageTestTarget(remainder);
+    if (!normalized) {
+      return undefined;
+    }
+    if (IMESSAGE_CHAT_PREFIX.test(normalized)) {
+      return normalized;
+    }
+    return `${prefix}${normalized}`;
+  };
+
+  const lower = trimmed.toLowerCase();
+  if (lower.startsWith("imessage:")) {
+    return normalizeWithPrefix("imessage:");
+  }
+  if (lower.startsWith("sms:")) {
+    return normalizeWithPrefix("sms:");
+  }
+  if (lower.startsWith("auto:")) {
+    return normalizeWithPrefix("auto:");
+  }
+
+  const chatMatch = IMESSAGE_CHAT_PREFIX.exec(trimmed);
+  if (chatMatch) {
+    const value = trimmed.slice(chatMatch[0].length).trim();
+    if (!value) {
+      return undefined;
+    }
+    const rawKey = chatMatch[0].toLowerCase();
+    const key =
+      rawKey === "chat_id:" || rawKey === "chatid:" || rawKey === "chat:"
+        ? "chat_id:"
+        : rawKey === "chat_guid:" || rawKey === "chatguid:" || rawKey === "guid:"
+          ? "chat_guid:"
+          : "chat_identifier:";
+    return `${key}${value}`;
+  }
+
+  if (trimmed.includes("@")) {
+    return trimmed.toLowerCase();
+  }
+
+  if (/^\+?[\d\s().-]+$/.test(trimmed)) {
+    const digits = trimmed.replace(/\D/g, "");
+    if (digits.length < 3) {
+      return undefined;
+    }
+    return `+${digits}`;
+  }
+
+  return trimmed.toLowerCase();
+}
+
+const imessageTestOutbound: ChannelOutboundAdapter = {
+  deliveryMode: "direct",
+  textChunkLimit: 4000,
+  sendText: async ({ to, text, deps, accountId }) => {
+    const send = deps?.sendIMessage;
+    if (!send) {
+      return { channel: "imessage", messageId: "imessage-test-message", chatId: to };
+    }
+    const result = await send(to, text, {
+      accountId: accountId ?? undefined,
+    });
+    return { channel: "imessage", ...result };
+  },
+  sendMedia: async ({ to, text, mediaUrl, deps, accountId }) => {
+    const send = deps?.sendIMessage;
+    if (!send) {
+      return { channel: "imessage", messageId: "imessage-test-message", chatId: to };
+    }
+    const result = await send(to, text, {
+      mediaUrl,
+      accountId: accountId ?? undefined,
+    });
+    return { channel: "imessage", ...result };
+  },
+};
 
 export const createIMessageTestPlugin = (params?: {
   outbound?: ChannelOutboundAdapter;
@@ -58,7 +145,7 @@ export const createIMessageTestPlugin = (params?: {
         ];
       }),
   },
-  outbound: params?.outbound ?? imessageOutbound,
+  outbound: params?.outbound ?? imessageTestOutbound,
   messaging: {
     targetResolver: {
       looksLikeId: (raw) => {
@@ -76,7 +163,7 @@ export const createIMessageTestPlugin = (params?: {
       },
       hint: "<handle|chat_id:ID>",
     },
-    normalizeTarget: (raw) => normalizeIMessageHandle(raw),
+    normalizeTarget: (raw) => normalizeIMessageTestTarget(raw),
   },
 });
 
