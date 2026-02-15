@@ -10,7 +10,6 @@ import {
   normalizeChatChannelId,
 } from "../channels/registry.js";
 import { isRecord } from "../utils.js";
-import { hasAnyWhatsAppAuth } from "../web/accounts.js";
 
 type PluginEnableChange = {
   pluginId: string;
@@ -179,12 +178,20 @@ function isIMessageConfigured(cfg: OpenClawConfig): boolean {
 }
 
 function isWhatsAppConfigured(cfg: OpenClawConfig): boolean {
-  if (hasAnyWhatsAppAuth(cfg)) {
-    return true;
-  }
   const entry = resolveChannelConfig(cfg, "whatsapp");
   if (!entry) {
     return false;
+  }
+  if (
+    hasNonEmptyString(entry.authDir) ||
+    hasNonEmptyString(entry.sessionDir) ||
+    hasNonEmptyString(entry.session) ||
+    hasNonEmptyString(entry.deviceName)
+  ) {
+    return true;
+  }
+  if (accountsHaveKeys(entry.accounts, ["authDir", "sessionDir", "session", "deviceName"])) {
+    return true;
   }
   return recordHasKeys(entry);
 }

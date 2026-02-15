@@ -160,6 +160,7 @@ export async function ensureOnboardingPluginInstalled(params: {
 
   const result = await installPluginFromNpmSpec({
     spec: entry.install.npmSpec,
+    config: next,
     logger: {
       info: (msg) => runtime.log?.(msg),
       warn: (msg) => runtime.log?.(msg),

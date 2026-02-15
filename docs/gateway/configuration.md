@@ -74,29 +74,23 @@ When validation fails:
 ## Common tasks
 
 <AccordionGroup>
-  <Accordion title="Set up a channel (WhatsApp, Telegram, Discord, etc.)">
+  <Accordion title="Set up a v1 integration channel">
     Each channel has its own config section under `channels.<provider>`. See the dedicated channel page for setup steps:
 
-    - [WhatsApp](/channels/whatsapp) — `channels.whatsapp`
-    - [Telegram](/channels/telegram) — `channels.telegram`
-    - [Discord](/channels/discord) — `channels.discord`
     - [Slack](/channels/slack) — `channels.slack`
-    - [Signal](/channels/signal) — `channels.signal`
-    - [iMessage](/channels/imessage) — `channels.imessage`
-    - [Google Chat](/channels/googlechat) — `channels.googlechat`
-    - [Mattermost](/channels/mattermost) — `channels.mattermost`
-    - [MS Teams](/channels/msteams) — `channels.msteams`
+    - [Microsoft Teams](/channels/msteams) — `channels.msteams`
+    - [Webhooks](/automation/webhook) — `hooks.*`
 
     All channels share the same DM policy pattern:
 
     ```json5
     {
       channels: {
-        telegram: {
+        slack: {
           enabled: true,
-          botToken: "123:abc",
+          botToken: "env:SLACK_BOT_TOKEN",
           dmPolicy: "pairing",   // pairing | allowlist | open | disabled
-          allowFrom: ["tg:123"], // only for allowlist/open
+          allowFrom: ["U123456"], // only for allowlist/open
         },
       },
     }

@@ -4,6 +4,7 @@ import { defaultSlotIdForKey } from "./slots.js";
 
 export type NormalizedPluginsConfig = {
   enabled: boolean;
+  trustMode: "signed" | "curated";
   allow: string[];
   deny: string[];
   loadPaths: string[];
@@ -18,6 +19,8 @@ export const BUNDLED_ENABLED_BY_DEFAULT = new Set<string>([
   "phone-control",
   "talk-voice",
 ]);
+
+type DeploymentMode = NonNullable<OpenClawConfig["deployment"]>["mode"];
 
 const normalizeList = (value: unknown): string[] => {
   if (!Array.isArray(value)) {
@@ -62,12 +65,32 @@ const normalizePluginEntries = (entries: unknown): NormalizedPluginsConfig["entr
   return normalized;
 };
 
+const normalizeTrustMode = (
+  value: unknown,
+  deploymentMode?: DeploymentMode,
+): "signed" | "curated" => {
+  if (value === "signed") {
+    return "signed";
+  }
+  if (value === "curated") {
+    return "curated";
+  }
+  if (deploymentMode === "b2b") {
+    return "curated";
+  }
+  return "curated";
+};
+
 export const normalizePluginsConfig = (
   config?: OpenClawConfig["plugins"],
+  options?: {
+    deploymentMode?: DeploymentMode;
+  },
 ): NormalizedPluginsConfig => {
   const memorySlot = normalizeSlotValue(config?.slots?.memory);
   return {
     enabled: config?.enabled !== false,
+    trustMode: normalizeTrustMode(config?.trustMode, options?.deploymentMode),
     allow: normalizeList(config?.allow),
     deny: normalizeList(config?.deny),
     loadPaths: normalizeList(config?.load?.paths),
@@ -89,6 +112,9 @@ const hasExplicitPluginConfig = (plugins?: OpenClawConfig["plugins"]) => {
     return false;
   }
   if (typeof plugins.enabled === "boolean") {
+    return true;
+  }
+  if (plugins.trustMode === "curated" || plugins.trustMode === "signed") {
     return true;
   }
   if (Array.isArray(plugins.allow) && plugins.allow.length > 0) {
@@ -172,13 +198,26 @@ export function resolveEnableState(
   if (config.deny.includes(id)) {
     return { enabled: false, reason: "blocked by denylist" };
   }
-  if (config.allow.length > 0 && !config.allow.includes(id)) {
-    return { enabled: false, reason: "not in allowlist" };
-  }
   if (config.slots.memory === id) {
     return { enabled: true };
   }
   const entry = config.entries[id];
+  const hasExplicitEntry = Object.prototype.hasOwnProperty.call(config.entries, id);
+  if (config.trustMode === "curated" && origin !== "bundled") {
+    if (entry?.enabled === false) {
+      return { enabled: false, reason: "disabled in config" };
+    }
+    if (config.allow.includes(id) || hasExplicitEntry) {
+      return { enabled: true };
+    }
+    return {
+      enabled: false,
+      reason: "curated trust mode requires explicit allowlist or entry enablement",
+    };
+  }
+  if (config.allow.length > 0 && !config.allow.includes(id)) {
+    return { enabled: false, reason: "not in allowlist" };
+  }
   if (entry?.enabled === true) {
     return { enabled: true };
   }

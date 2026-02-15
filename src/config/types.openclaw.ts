@@ -28,6 +28,16 @@ export type OpenClawConfig = {
     lastTouchedAt?: string;
   };
   auth?: AuthConfig;
+  deployment?: {
+    /** Deployment profile mode. */
+    mode?: "b2b";
+  };
+  security?: {
+    egress?: {
+      /** Allowed outbound destinations for egress-capable tools. */
+      allowlist?: string[];
+    };
+  };
   env?: {
     /** Opt-in: import missing secrets from a login shell environment (exec `$SHELL -l -c 'env -0'`). */
     shellEnv?: {

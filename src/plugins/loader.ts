@@ -23,6 +23,7 @@ import {
 import { discoverOpenClawPlugins } from "./discovery.js";
 import { initializeGlobalHookRunner } from "./hook-runner-global.js";
 import { loadPluginManifestRegistry } from "./manifest-registry.js";
+import { loadPluginManifest } from "./manifest.js";
 import { createPluginRegistry, type PluginRecord, type PluginRegistry } from "./registry.js";
 import { setActivePluginRegistry } from "./runtime.js";
 import { createPluginRuntime } from "./runtime/index.js";
@@ -167,13 +168,67 @@ function pushDiagnostics(diagnostics: PluginDiagnostic[], append: PluginDiagnost
   diagnostics.push(...append);
 }
 
+type SignedTrustCheckResult =
+  | { ok: true; source: string }
+  | { ok: false; error: string; source: string };
+
+function resolveSignedTrustCheck(params: {
+  rootDir: string;
+  cache: Map<string, SignedTrustCheckResult>;
+}): SignedTrustCheckResult {
+  const cached = params.cache.get(params.rootDir);
+  if (cached) {
+    return cached;
+  }
+
+  const manifestRes = loadPluginManifest(params.rootDir);
+  if (!manifestRes.ok) {
+    const result: SignedTrustCheckResult = {
+      ok: false,
+      error: `signed trust mode requires a valid plugin manifest (${manifestRes.error})`,
+      source: manifestRes.manifestPath,
+    };
+    params.cache.set(params.rootDir, result);
+    return result;
+  }
+
+  const publisher = manifestRes.manifest.publisher?.trim();
+  const signature = manifestRes.manifest.signature?.trim();
+  const missing: string[] = [];
+  if (!publisher) {
+    missing.push("publisher");
+  }
+  if (!signature) {
+    missing.push("signature");
+  }
+
+  if (missing.length > 0) {
+    const result: SignedTrustCheckResult = {
+      ok: false,
+      error: `signed trust mode requires manifest ${missing.join(" + ")}`,
+      source: manifestRes.manifestPath,
+    };
+    params.cache.set(params.rootDir, result);
+    return result;
+  }
+
+  const result: SignedTrustCheckResult = {
+    ok: true,
+    source: manifestRes.manifestPath,
+  };
+  params.cache.set(params.rootDir, result);
+  return result;
+}
+
 export function loadOpenClawPlugins(options: PluginLoadOptions = {}): PluginRegistry {
   // Test env: default-disable plugins unless explicitly configured.
   // This keeps unit/gateway suites fast and avoids loading heavyweight plugin deps by accident.
   const cfg = applyTestPluginDefaults(options.config ?? {}, process.env);
   const logger = options.logger ?? defaultLogger();
   const validateOnly = options.mode === "validate";
-  const normalized = normalizePluginsConfig(cfg.plugins);
+  const normalized = normalizePluginsConfig(cfg.plugins, {
+    deploymentMode: cfg.deployment?.mode,
+  });
   const cacheKey = buildCacheKey({
     workspaceDir: options.workspaceDir,
     plugins: normalized,
@@ -226,6 +281,7 @@ export function loadOpenClawPlugins(options: PluginLoadOptions = {}): PluginRegi
   );
 
   const seenIds = new Map<string, PluginRecord["origin"]>();
+  const signedTrustCache = new Map<string, SignedTrustCheckResult>();
   const memorySlot = normalized.slots.memory;
   let selectedMemoryPluginId: string | null = null;
   let memorySlotMatched = false;
@@ -278,6 +334,27 @@ export function loadOpenClawPlugins(options: PluginLoadOptions = {}): PluginRegi
       registry.plugins.push(record);
       seenIds.set(pluginId, candidate.origin);
       continue;
+    }
+
+    if (normalized.trustMode === "signed") {
+      const trustCheck = resolveSignedTrustCheck({
+        rootDir: candidate.rootDir,
+        cache: signedTrustCache,
+      });
+      if (!trustCheck.ok) {
+        record.enabled = false;
+        record.status = "disabled";
+        record.error = trustCheck.error;
+        registry.plugins.push(record);
+        seenIds.set(pluginId, candidate.origin);
+        registry.diagnostics.push({
+          level: "error",
+          pluginId: record.id,
+          source: trustCheck.source,
+          message: record.error,
+        });
+        continue;
+      }
     }
 
     if (!manifestRecord.configSchema) {

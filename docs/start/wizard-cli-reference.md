@@ -19,7 +19,7 @@ Local mode (default) walks you through:
 - Model and auth setup (OpenAI Code subscription OAuth, Anthropic API key or setup token, plus MiniMax, GLM, Moonshot, and AI Gateway options)
 - Workspace location and bootstrap files
 - Gateway settings (port, bind, auth, tailscale)
-- Channels and providers (Telegram, WhatsApp, Discord, Google Chat, Mattermost plugin, Signal)
+- Curated v1 integrations (Slack, Microsoft Teams, email webhook ingress)
 - Daemon install (LaunchAgent or systemd user unit)
 - Health check
 - Skills setup
@@ -53,17 +53,11 @@ It does not install or modify anything on the remote host.
     - Disable auth only if you fully trust every local process.
     - Non-loopback binds still require auth.
   </Step>
-  <Step title="Channels">
-    - [WhatsApp](/channels/whatsapp): optional QR login
-    - [Telegram](/channels/telegram): bot token
-    - [Discord](/channels/discord): bot token
-    - [Google Chat](/channels/googlechat): service account JSON + webhook audience
-    - [Mattermost](/channels/mattermost) plugin: bot token + base URL
-    - [Signal](/channels/signal): optional `signal-cli` install + account config
-    - [BlueBubbles](/channels/bluebubbles): recommended for iMessage; server URL + password + webhook
-    - [iMessage](/channels/imessage): legacy `imsg` CLI path + DB access
-    - DM security: default is pairing. First DM sends a code; approve via
-      `openclaw pairing approve <channel> <code>` or use allowlists.
+  <Step title="Integrations">
+    - [Slack](/channels/slack): bot/app token setup and channel policy prompts
+    - [Microsoft Teams](/channels/msteams): plugin install prompt plus Bot Framework credential setup
+    - [Email webhook ingress](/automation/webhook): hook token + path configuration for trusted senders
+    - DM security: default is pairing where applicable; use `openclaw pairing` or explicit allowlists.
   </Step>
   <Step title="Daemon install">
     - macOS: LaunchAgent
@@ -71,7 +65,7 @@ It does not install or modify anything on the remote host.
     - Linux and Windows via WSL2: systemd user unit
       - Wizard attempts `loginctl enable-linger <user>` so gateway stays up after logout.
       - May prompt for sudo (writes `/var/lib/systemd/linger`); it tries without sudo first.
-    - Runtime selection: Node (recommended; required for WhatsApp and Telegram). Bun is not recommended.
+    - Runtime selection: Node is recommended. Bun is not recommended.
   </Step>
   <Step title="Health check">
     - Starts gateway (if needed) and runs `openclaw health`.
@@ -83,7 +77,7 @@ It does not install or modify anything on the remote host.
     - Installs optional dependencies (some use Homebrew on macOS).
   </Step>
   <Step title="Finish">
-    - Summary and next steps, including iOS, Android, and macOS app options.
+    - Summary and next steps, including dashboard and channel verification checks.
   </Step>
 </Steps>
 
@@ -215,8 +209,8 @@ Typical fields in `~/.openclaw/openclaw.json`:
 - `agents.defaults.workspace`
 - `agents.defaults.model` / `models.providers` (if Minimax chosen)
 - `gateway.*` (mode, bind, auth, tailscale)
-- `channels.telegram.botToken`, `channels.discord.token`, `channels.signal.*`, `channels.imessage.*`
-- Channel allowlists (Slack, Discord, Matrix, Microsoft Teams) when you opt in during prompts (names resolve to IDs when possible)
+- `channels.slack.*`, `channels.msteams.*`, `hooks.*`
+- Channel allowlists (Slack and Microsoft Teams) when you opt in during prompts (names resolve to IDs when possible)
 - `skills.install.nodeManager`
 - `wizard.lastRunAt`
 - `wizard.lastRunVersion`
@@ -226,12 +220,12 @@ Typical fields in `~/.openclaw/openclaw.json`:
 
 `openclaw agents add` writes `agents.list[]` and optional `bindings`.
 
-WhatsApp credentials go under `~/.openclaw/credentials/whatsapp/<accountId>/`.
+Slack and Teams credentials are saved via config/env values and secure credential stores when supported.
 Sessions are stored under `~/.openclaw/agents/<agentId>/sessions/`.
 
 <Note>
-Some channels are delivered as plugins. When selected during onboarding, the wizard
-prompts to install the plugin (npm or local path) before channel configuration.
+Microsoft Teams is plugin-delivered. When selected during onboarding, the wizard
+prompts to install `@openclaw/msteams` before channel configuration.
 </Note>
 
 Gateway wizard RPC:
@@ -243,14 +237,11 @@ Gateway wizard RPC:
 
 Clients (macOS app and Control UI) can render steps without re-implementing onboarding logic.
 
-Signal setup behavior:
+Microsoft Teams setup behavior:
 
-- Downloads the appropriate release asset
-- Stores it under `~/.openclaw/tools/signal-cli/<version>/`
-- Writes `channels.signal.cliPath` in config
-- JVM builds require Java 21
-- Native builds are used when available
-- Windows uses WSL2 and follows Linux signal-cli flow inside WSL
+- Prompts to install the Teams plugin if not already installed.
+- Guides Bot Framework credential collection (`appId`, `appPassword`, `tenantId`).
+- Writes Teams channel config under `channels.msteams.*`.
 
 ## Related docs
 

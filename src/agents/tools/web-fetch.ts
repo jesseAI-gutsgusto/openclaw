@@ -64,6 +64,14 @@ type WebFetchConfig = NonNullable<OpenClawConfig["tools"]>["web"] extends infer 
     : undefined
   : undefined;
 
+type SecurityAwareConfig = OpenClawConfig & {
+  security?: {
+    egress?: {
+      allowlist?: unknown;
+    };
+  };
+};
+
 type FirecrawlFetchConfig =
   | {
       enabled?: boolean;
@@ -81,6 +89,22 @@ function resolveFetchConfig(cfg?: OpenClawConfig): WebFetchConfig {
     return undefined;
   }
   return fetch as WebFetchConfig;
+}
+
+function resolveEgressHostnameAllowlist(cfg?: OpenClawConfig): string[] | undefined {
+  const allowlist = (cfg as SecurityAwareConfig | undefined)?.security?.egress?.allowlist;
+  if (!Array.isArray(allowlist)) {
+    return undefined;
+  }
+  const normalized = Array.from(
+    new Set(
+      allowlist
+        .filter((value): value is string => typeof value === "string")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  );
+  return normalized.length > 0 ? normalized : undefined;
 }
 
 function resolveFetchEnabled(params: { fetch?: WebFetchConfig; sandboxed?: boolean }): boolean {
@@ -389,6 +413,7 @@ async function runWebFetch(params: {
   firecrawlProxy: "auto" | "basic" | "stealth";
   firecrawlStoreInCache: boolean;
   firecrawlTimeoutSeconds: number;
+  egressHostnameAllowlist?: string[];
 }): Promise<Record<string, unknown>> {
   const cacheKey = normalizeCacheKey(
     `fetch:${params.url}:${params.extractMode}:${params.maxChars}`,
@@ -417,6 +442,13 @@ async function runWebFetch(params: {
       url: params.url,
       maxRedirects: params.maxRedirects,
       timeoutMs: params.timeoutSeconds * 1000,
+      policy:
+        params.egressHostnameAllowlist && params.egressHostnameAllowlist.length > 0
+          ? {
+              // Preserve default SSRF private-network blocks, only tighten outbound hostnames.
+              hostnameAllowlist: params.egressHostnameAllowlist,
+            }
+          : undefined,
       init: {
         headers: {
           Accept: "text/markdown, text/html;q=0.9, */*;q=0.1",
@@ -671,6 +703,7 @@ export function createWebFetchTool(options?: {
   sandboxed?: boolean;
 }): AnyAgentTool | null {
   const fetch = resolveFetchConfig(options?.config);
+  const egressHostnameAllowlist = resolveEgressHostnameAllowlist(options?.config);
   if (!resolveFetchEnabled({ fetch, sandboxed: options?.sandboxed })) {
     return null;
   }
@@ -721,6 +754,7 @@ export function createWebFetchTool(options?: {
         firecrawlProxy: "auto",
         firecrawlStoreInCache: true,
         firecrawlTimeoutSeconds,
+        egressHostnameAllowlist,
       });
       return jsonResult(result);
     },

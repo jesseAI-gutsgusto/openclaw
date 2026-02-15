@@ -1,28 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { stripMarkdown } from "../line/markdown-to-line.js";
+import { stripMarkdownForTts } from "./tts.js";
 
 /**
- * Tests that stripMarkdown (used in the TTS pipeline via maybeApplyTtsToPayload)
+ * Tests that stripMarkdownForTts (used in maybeApplyTtsToPayload)
  * produces clean text suitable for speech synthesis.
  *
- * The TTS pipeline calls stripMarkdown() before sending text to TTS engines
+ * The TTS pipeline calls stripMarkdownForTts() before sending text to TTS engines
  * (OpenAI, ElevenLabs, Edge) so that formatting symbols are not read aloud
  * (e.g. "hashtag hashtag hashtag" for ### headers).
  */
 describe("TTS text preparation – stripMarkdown", () => {
   it("strips markdown headers before TTS", () => {
-    expect(stripMarkdown("### System Design Basics")).toBe("System Design Basics");
-    expect(stripMarkdown("## Heading\nSome text")).toBe("Heading\nSome text");
+    expect(stripMarkdownForTts("### System Design Basics")).toBe("System Design Basics");
+    expect(stripMarkdownForTts("## Heading\nSome text")).toBe("Heading\nSome text");
   });
 
   it("strips bold and italic markers before TTS", () => {
-    expect(stripMarkdown("This is **important** and *useful*")).toBe(
+    expect(stripMarkdownForTts("This is **important** and *useful*")).toBe(
       "This is important and useful",
     );
   });
 
   it("strips inline code markers before TTS", () => {
-    expect(stripMarkdown("Use `consistent hashing` for distribution")).toBe(
+    expect(stripMarkdownForTts("Use `consistent hashing` for distribution")).toBe(
       "Use consistent hashing for distribution",
     );
   });
@@ -34,7 +34,7 @@ describe("TTS text preparation – stripMarkdown", () => {
 
 Some ~~deleted~~ content.`;
 
-    const result = stripMarkdown(input);
+    const result = stripMarkdownForTts(input);
 
     expect(result).toBe(`Heading with bold and italic
 
@@ -54,7 +54,7 @@ Some deleted content.`);
 
 Use \`B-tree\` for read-heavy, \`LSM-tree\` for write-heavy.`;
 
-    const result = stripMarkdown(input);
+    const result = stripMarkdownForTts(input);
 
     expect(result).not.toContain("#");
     expect(result).not.toContain("**");

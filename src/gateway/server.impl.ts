@@ -32,6 +32,7 @@ import { startHeartbeatRunner } from "../infra/heartbeat-runner.js";
 import { getMachineDisplayName } from "../infra/machine-name.js";
 import { ensureOpenClawCliOnPath } from "../infra/path-env.js";
 import { setGatewaySigusr1RestartPolicy } from "../infra/restart.js";
+import { onRunEvent, type RunEventV1 } from "../infra/run-events.js";
 import {
   primeRemoteSkillsCache,
   refreshRemoteBinsForConnectedNodes,
@@ -98,6 +99,12 @@ const gatewayRuntime = runtimeForLogger(log);
 
 export type GatewayServer = {
   close: (opts?: { reason?: string; restartExpectedMs?: number | null }) => Promise<void>;
+};
+
+export type GatewayRunEventEnvelope = {
+  event: "run.event";
+  payload: RunEventV1;
+  sessionKey?: string;
 };
 
 export type GatewayServerOptions = {
@@ -450,6 +457,18 @@ export async function startGatewayServer(
   const heartbeatUnsub = onHeartbeatEvent((evt) => {
     broadcast("heartbeat", evt, { dropIfSlow: true });
   });
+  const runEventUnsub = onRunEvent((evt) => {
+    const sessionKey = resolveSessionKeyForRun(evt.runId);
+    const payload: GatewayRunEventEnvelope = {
+      event: "run.event",
+      payload: evt,
+      ...(sessionKey ? { sessionKey } : {}),
+    };
+    broadcast("run.event", payload, { dropIfSlow: true });
+    if (sessionKey) {
+      nodeSendToSession(sessionKey, "run.event", payload);
+    }
+  });
 
   let heartbeatRunner = startHeartbeatRunner({ cfg: cfgAtStart });
 
@@ -655,6 +674,7 @@ export async function startGatewayServer(
         skillsRefreshTimer = null;
       }
       skillsChangeUnsub();
+      runEventUnsub();
       authRateLimiter?.dispose();
       await close(opts);
     },

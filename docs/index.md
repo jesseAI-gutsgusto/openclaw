@@ -1,11 +1,12 @@
 ---
-summary: "OpenClaw is a multi-channel gateway for AI agents that runs on any OS."
+summary: "OpenClaw runs isolated single-tenant customer gateways with curated integrations."
 read_when:
-  - Introducing OpenClaw to newcomers
+  - Evaluating OpenClaw for B2B deployment
+  - Planning a customer-instance rollout
 title: "OpenClaw"
 ---
 
-# OpenClaw 🦞
+# OpenClaw
 
 <p align="center">
     <img
@@ -22,74 +23,76 @@ title: "OpenClaw"
     />
 </p>
 
-> _"EXFOLIATE! EXFOLIATE!"_ — A space lobster, probably
-
 <p align="center">
-  <strong>Any OS gateway for AI agents across WhatsApp, Telegram, Discord, iMessage, and more.</strong><br />
-  Send a message, get an agent response from your pocket. Plugins add Mattermost and more.
+  <strong>B2B AI gateway with one isolated instance per customer.</strong><br />
+  V1 integrations are curated: Slack, Microsoft Teams, and email webhook ingress.
 </p>
 
 <Columns>
-  <Card title="Get Started" href="/start/getting-started" icon="rocket">
-    Install OpenClaw and bring up the Gateway in minutes.
+  <Card title="Deploy a customer instance" href="/start/openclaw" icon="building-2">
+    Set up an isolated Gateway, workspace, and auth profile for one customer.
   </Card>
-  <Card title="Run the Wizard" href="/start/wizard" icon="sparkles">
-    Guided setup with `openclaw onboard` and pairing flows.
+  <Card title="Run the wizard" href="/start/wizard" icon="sparkles">
+    Use `openclaw onboard` to configure gateway, integrations, and safety policy.
   </Card>
-  <Card title="Open the Control UI" href="/web/control-ui" icon="layout-dashboard">
-    Launch the browser dashboard for chat, config, and sessions.
+  <Card title="Review channel scope" href="/channels" icon="network">
+    See the v1 channel surface and integration requirements.
   </Card>
 </Columns>
 
-## What is OpenClaw?
+## What OpenClaw is for
 
-OpenClaw is a **self-hosted gateway** that connects your favorite chat apps — WhatsApp, Telegram, Discord, iMessage, and more — to AI coding agents like Pi. You run a single Gateway process on your own machine (or a server), and it becomes the bridge between your messaging apps and an always-available AI assistant.
+OpenClaw is a self-hosted control plane for enterprise AI assistants. Instead of one shared multi-tenant service, you run one OpenClaw instance per customer environment.
 
-**Who is it for?** Developers and power users who want a personal AI assistant they can message from anywhere — without giving up control of their data or relying on a hosted service.
+This model gives you:
 
-**What makes it different?**
+- Customer-level isolation for sessions, credentials, and routing.
+- Curated integrations with controlled rollout and support boundaries.
+- A clear safety boundary where risky tool execution stays in a sandbox lane.
+- Operator control through CLI and Web Control UI.
 
-- **Self-hosted**: runs on your hardware, your rules
-- **Multi-channel**: one Gateway serves WhatsApp, Telegram, Discord, and more simultaneously
-- **Agent-native**: built for coding agents with tool use, sessions, memory, and multi-agent routing
-- **Open source**: MIT licensed, community-driven
+## V1 integration scope
 
-**What do you need?** Node 22+, an API key (Anthropic recommended), and 5 minutes.
+- [Slack](/channels/slack)
+- [Microsoft Teams](/channels/msteams)
+- [Email webhook ingress](/automation/webhook)
+
+Additional integrations can be enabled later through curated extension work, not by default in v1.
 
 ## How it works
 
 ```mermaid
 flowchart LR
-  A["Chat apps + plugins"] --> B["Gateway"]
-  B --> C["Pi agent"]
-  B --> D["CLI"]
-  B --> E["Web Control UI"]
-  B --> F["macOS app"]
-  B --> G["iOS and Android nodes"]
+  A["Customer A Slack, Teams, Email"] --> B["Gateway instance A"]
+  C["Customer B Slack, Teams, Email"] --> D["Gateway instance B"]
+  B --> E["Agent runtime A"]
+  D --> F["Agent runtime B"]
+  E --> G["Sandbox lane for risky tools"]
+  F --> H["Sandbox lane for risky tools"]
 ```
 
-The Gateway is the single source of truth for sessions, routing, and channel connections.
+Each customer instance owns its own policies, credentials, and routing state.
 
 ## Key capabilities
 
 <Columns>
-  <Card title="Multi-channel gateway" icon="network">
-    WhatsApp, Telegram, Discord, and iMessage with a single Gateway process.
+  <Card title="Single-tenant by default" icon="shield-check">
+    One customer per Gateway instance with isolated session and config state.
   </Card>
-  <Card title="Plugin channels" icon="plug">
-    Add Mattermost and more with extension packages.
+  <Card title="Curated integrations" icon="plug">
+    Controlled v1 channel scope: Slack, Microsoft Teams, and email webhook ingress.
   </Card>
-  <Card title="Multi-agent routing" icon="route">
-    Isolated sessions per agent, workspace, or sender.
+  <Card title="Sandbox lane" icon="container">
+    Route risky tools to sandboxed execution instead of host execution.
   </Card>
-  <Card title="Media support" icon="image">
-    Send and receive images, audio, and documents.
+  <Card title="Control UI" icon="monitor">
+    Browser interface for chat, diagnostics, configuration, and sessions.
   </Card>
-  <Card title="Web Control UI" icon="monitor">
-    Browser dashboard for chat, config, sessions, and nodes.
+  <Card title="Operational controls" icon="wrench">
+    Health checks, logs, and routing controls through CLI and gateway APIs.
   </Card>
-  <Card title="Mobile nodes" icon="smartphone">
-    Pair iOS and Android nodes with Canvas support.
+  <Card title="Config-first rollout" icon="settings">
+    Versionable config and repeatable onboarding across customer instances.
   </Card>
 </Columns>
 
@@ -101,92 +104,40 @@ The Gateway is the single source of truth for sessions, routing, and channel con
     npm install -g openclaw@latest
     ```
   </Step>
-  <Step title="Onboard and install the service">
+  <Step title="Run guided onboarding">
     ```bash
     openclaw onboard --install-daemon
     ```
   </Step>
-  <Step title="Pair WhatsApp and start the Gateway">
+  <Step title="Start the Gateway and open the dashboard">
     ```bash
-    openclaw channels login
     openclaw gateway --port 18789
+    openclaw dashboard
     ```
   </Step>
 </Steps>
 
-Need the full install and dev setup? See [Quick start](/start/quickstart).
-
-## Dashboard
-
-Open the browser Control UI after the Gateway starts.
-
-- Local default: [http://127.0.0.1:18789/](http://127.0.0.1:18789/)
-- Remote access: [Web surfaces](/web) and [Tailscale](/gateway/tailscale)
-
-<p align="center">
-  <img src="whatsapp-openclaw.jpg" alt="OpenClaw" width="420" />
-</p>
-
-## Configuration (optional)
-
-Config lives at `~/.openclaw/openclaw.json`.
-
-- If you **do nothing**, OpenClaw uses the bundled Pi binary in RPC mode with per-sender sessions.
-- If you want to lock it down, start with `channels.whatsapp.allowFrom` and (for groups) mention rules.
-
-Example:
-
-```json5
-{
-  channels: {
-    whatsapp: {
-      allowFrom: ["+15555550123"],
-      groups: { "*": { requireMention: true } },
-    },
-  },
-  messages: { groupChat: { mentionPatterns: ["@openclaw"] } },
-}
-```
+Need full deployment details? Start with [Single-tenant setup](/start/openclaw).
 
 ## Start here
 
 <Columns>
-  <Card title="Docs hubs" href="/start/hubs" icon="book-open">
-    All docs and guides, organized by use case.
+  <Card title="Single-tenant setup" href="/start/openclaw" icon="building-2">
+    End-to-end setup guide for customer-isolated deployment.
   </Card>
-  <Card title="Configuration" href="/gateway/configuration" icon="settings">
-    Core Gateway settings, tokens, and provider config.
+  <Card title="Wizard reference" href="/start/wizard" icon="list-checks">
+    Full onboarding flow and reconfiguration commands.
   </Card>
-  <Card title="Remote access" href="/gateway/remote" icon="globe">
-    SSH and tailnet access patterns.
+  <Card title="Gateway configuration" href="/gateway/configuration" icon="settings">
+    Gateway auth, policy, and sandbox-related configuration.
   </Card>
-  <Card title="Channels" href="/channels/telegram" icon="message-square">
-    Channel-specific setup for WhatsApp, Telegram, Discord, and more.
-  </Card>
-  <Card title="Nodes" href="/nodes" icon="smartphone">
-    iOS and Android nodes with pairing and Canvas.
-  </Card>
-  <Card title="Help" href="/help" icon="life-buoy">
-    Common fixes and troubleshooting entry point.
-  </Card>
-</Columns>
-
-## Learn more
-
-<Columns>
-  <Card title="Full feature list" href="/concepts/features" icon="list">
-    Complete channel, routing, and media capabilities.
-  </Card>
-  <Card title="Multi-agent routing" href="/concepts/multi-agent" icon="route">
-    Workspace isolation and per-agent sessions.
+  <Card title="Discovery and transports" href="/gateway/discovery" icon="radar">
+    How clients discover and connect to customer instances.
   </Card>
   <Card title="Security" href="/gateway/security" icon="shield">
-    Tokens, allowlists, and safety controls.
+    Threat model, allowlists, and sandbox lane guidance.
   </Card>
-  <Card title="Troubleshooting" href="/gateway/troubleshooting" icon="wrench">
-    Gateway diagnostics and common errors.
-  </Card>
-  <Card title="About and credits" href="/reference/credits" icon="info">
-    Project origins, contributors, and license.
+  <Card title="Help" href="/help" icon="life-buoy">
+    Troubleshooting and operational runbooks.
   </Card>
 </Columns>

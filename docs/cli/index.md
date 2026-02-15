@@ -925,7 +925,8 @@ Subcommands:
 
 ## Nodes
 
-`nodes` talks to the Gateway and targets paired nodes. See [/nodes](/nodes).
+`nodes` talks to the Gateway and targets paired nodes. For node host setup, see
+[`openclaw node`](/cli/node).
 
 Common options:
 

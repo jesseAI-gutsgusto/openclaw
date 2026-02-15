@@ -14,9 +14,14 @@ export type PluginManifest = {
   channels?: string[];
   providers?: string[];
   skills?: string[];
+  permissions?: string[];
   name?: string;
   description?: string;
   version?: string;
+  publisher?: string;
+  signature?: string;
+  checksum?: string;
+  sdkVersion?: string;
   uiHints?: Record<string, PluginConfigUiHint>;
 };
 
@@ -75,6 +80,11 @@ export function loadPluginManifest(rootDir: string): PluginManifestLoadResult {
   const channels = normalizeStringList(raw.channels);
   const providers = normalizeStringList(raw.providers);
   const skills = normalizeStringList(raw.skills);
+  const permissions = normalizeStringList(raw.permissions);
+  const publisher = typeof raw.publisher === "string" ? raw.publisher.trim() : undefined;
+  const signature = typeof raw.signature === "string" ? raw.signature.trim() : undefined;
+  const checksum = typeof raw.checksum === "string" ? raw.checksum.trim() : undefined;
+  const sdkVersion = typeof raw.sdkVersion === "string" ? raw.sdkVersion.trim() : undefined;
 
   let uiHints: Record<string, PluginConfigUiHint> | undefined;
   if (isRecord(raw.uiHints)) {
@@ -90,9 +100,14 @@ export function loadPluginManifest(rootDir: string): PluginManifestLoadResult {
       channels,
       providers,
       skills,
+      permissions,
       name,
       description,
       version,
+      publisher,
+      signature,
+      checksum,
+      sdkVersion,
       uiHints,
     },
     manifestPath,

@@ -157,8 +157,8 @@ Gatewayの起動後、ブラウザでControl UIを開きます。
   <Card title="チャネル" href="/channels/telegram" icon="message-square">
     WhatsApp、Telegram、Discordなどのチャネル固有のセットアップ。
   </Card>
-  <Card title="ノード" href="/nodes" icon="smartphone">
-    ペアリングとCanvas対応のiOSおよびAndroidノード。
+  <Card title="Webhook" href="/automation/webhook" icon="mail">
+    メールWebhook取り込みとイベント起点の自動化。
   </Card>
   <Card title="ヘルプ" href="/help" icon="life-buoy">
     一般的な修正とトラブルシューティングのエントリーポイント。

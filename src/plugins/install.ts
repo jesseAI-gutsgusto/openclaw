@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import type { OpenClawConfig } from "../config/config.js";
 import { MANIFEST_KEY } from "../compat/legacy-names.js";
 import {
   extractArchive,
@@ -12,6 +13,8 @@ import {
 import { runCommandWithTimeout } from "../process/exec.js";
 import * as skillScanner from "../security/skill-scanner.js";
 import { CONFIG_DIR, resolveUserPath } from "../utils.js";
+import { normalizePluginsConfig } from "./config-state.js";
+import { loadPluginManifest } from "./manifest.js";
 
 type PluginInstallLogger = {
   info?: (message: string) => void;
@@ -36,6 +39,85 @@ export type InstallPluginResult =
   | { ok: false; error: string };
 
 const defaultLogger: PluginInstallLogger = {};
+
+type PluginInstallGovernanceInput = {
+  config?: OpenClawConfig;
+};
+
+function resolveInstallTrustContext(input?: PluginInstallGovernanceInput): {
+  mode: "signed" | "curated";
+  normalized?: ReturnType<typeof normalizePluginsConfig>;
+} {
+  const cfg = input?.config;
+  if (!cfg) {
+    return { mode: "curated" };
+  }
+  const normalized = normalizePluginsConfig(cfg.plugins, {
+    deploymentMode: cfg.deployment?.mode,
+  });
+  return {
+    mode: normalized.trustMode,
+    normalized,
+  };
+}
+
+function hasExplicitInstallEntry(
+  pluginId: string,
+  normalized: ReturnType<typeof normalizePluginsConfig>,
+): boolean {
+  if (!Object.prototype.hasOwnProperty.call(normalized.entries, pluginId)) {
+    return false;
+  }
+  const entry = normalized.entries[pluginId];
+  return entry?.enabled !== false;
+}
+
+function validateInstallTrustMode(params: {
+  packageDir: string;
+  pluginId: string;
+  trustContext: ReturnType<typeof resolveInstallTrustContext>;
+}): InstallPluginResult | null {
+  if (params.trustContext.mode === "curated") {
+    const normalized = params.trustContext.normalized;
+    if (!normalized) {
+      return null;
+    }
+    const explicitlyAllowed =
+      normalized.allow.includes(params.pluginId) ||
+      hasExplicitInstallEntry(params.pluginId, normalized);
+    if (!explicitlyAllowed) {
+      return {
+        ok: false,
+        error: `plugin "${params.pluginId}" blocked by curated trust mode: add it to plugins.allow or set plugins.entries.${params.pluginId}.enabled=true`,
+      };
+    }
+    return null;
+  }
+
+  const manifestRes = loadPluginManifest(params.packageDir);
+  if (!manifestRes.ok) {
+    return {
+      ok: false,
+      error: `signed trust mode requires a valid plugin manifest (${manifestRes.error})`,
+    };
+  }
+  const publisher = manifestRes.manifest.publisher?.trim();
+  const signature = manifestRes.manifest.signature?.trim();
+  const missing: string[] = [];
+  if (!publisher) {
+    missing.push("publisher");
+  }
+  if (!signature) {
+    missing.push("signature");
+  }
+  if (missing.length > 0) {
+    return {
+      ok: false,
+      error: `signed trust mode requires manifest ${missing.join(" + ")}`,
+    };
+  }
+  return null;
+}
 
 function unscopedPackageName(name: string): string {
   const trimmed = name.trim();
@@ -140,6 +222,7 @@ async function installPluginFromPackageDir(params: {
   mode?: "install" | "update";
   dryRun?: boolean;
   expectedPluginId?: string;
+  governance?: PluginInstallGovernanceInput;
 }): Promise<InstallPluginResult> {
   const logger = params.logger ?? defaultLogger;
   const timeoutMs = params.timeoutMs ?? 120_000;
@@ -176,6 +259,16 @@ async function installPluginFromPackageDir(params: {
       ok: false,
       error: `plugin id mismatch: expected ${params.expectedPluginId}, got ${pluginId}`,
     };
+  }
+
+  const trustContext = resolveInstallTrustContext(params.governance);
+  const trustValidation = validateInstallTrustMode({
+    packageDir: params.packageDir,
+    pluginId,
+    trustContext,
+  });
+  if (trustValidation) {
+    return trustValidation;
   }
 
   const packageDir = path.resolve(params.packageDir);
@@ -319,6 +412,7 @@ export async function installPluginFromArchive(params: {
   mode?: "install" | "update";
   dryRun?: boolean;
   expectedPluginId?: string;
+  config?: OpenClawConfig;
 }): Promise<InstallPluginResult> {
   const logger = params.logger ?? defaultLogger;
   const timeoutMs = params.timeoutMs ?? 120_000;
@@ -364,6 +458,7 @@ export async function installPluginFromArchive(params: {
     mode,
     dryRun: params.dryRun,
     expectedPluginId: params.expectedPluginId,
+    governance: { config: params.config },
   });
 }
 
@@ -375,6 +470,7 @@ export async function installPluginFromDir(params: {
   mode?: "install" | "update";
   dryRun?: boolean;
   expectedPluginId?: string;
+  config?: OpenClawConfig;
 }): Promise<InstallPluginResult> {
   const dirPath = resolveUserPath(params.dirPath);
   if (!(await fileExists(dirPath))) {
@@ -393,6 +489,7 @@ export async function installPluginFromDir(params: {
     mode: params.mode,
     dryRun: params.dryRun,
     expectedPluginId: params.expectedPluginId,
+    governance: { config: params.config },
   });
 }
 
@@ -402,6 +499,7 @@ export async function installPluginFromFile(params: {
   logger?: PluginInstallLogger;
   mode?: "install" | "update";
   dryRun?: boolean;
+  config?: OpenClawConfig;
 }): Promise<InstallPluginResult> {
   const logger = params.logger ?? defaultLogger;
   const mode = params.mode ?? "install";
@@ -422,6 +520,15 @@ export async function installPluginFromFile(params: {
   const pluginIdError = validatePluginId(pluginId);
   if (pluginIdError) {
     return { ok: false, error: pluginIdError };
+  }
+  const trustContext = resolveInstallTrustContext({ config: params.config });
+  const trustValidation = validateInstallTrustMode({
+    packageDir: path.dirname(filePath),
+    pluginId,
+    trustContext,
+  });
+  if (trustValidation) {
+    return trustValidation;
   }
   const targetFile = path.join(extensionsDir, `${safeFileName(pluginId)}${path.extname(filePath)}`);
 
@@ -461,6 +568,7 @@ export async function installPluginFromNpmSpec(params: {
   mode?: "install" | "update";
   dryRun?: boolean;
   expectedPluginId?: string;
+  config?: OpenClawConfig;
 }): Promise<InstallPluginResult> {
   const logger = params.logger ?? defaultLogger;
   const timeoutMs = params.timeoutMs ?? 120_000;
@@ -504,6 +612,7 @@ export async function installPluginFromNpmSpec(params: {
     mode,
     dryRun,
     expectedPluginId,
+    config: params.config,
   });
 }
 
@@ -515,6 +624,7 @@ export async function installPluginFromPath(params: {
   mode?: "install" | "update";
   dryRun?: boolean;
   expectedPluginId?: string;
+  config?: OpenClawConfig;
 }): Promise<InstallPluginResult> {
   const resolved = resolveUserPath(params.path);
   if (!(await fileExists(resolved))) {
@@ -531,6 +641,7 @@ export async function installPluginFromPath(params: {
       mode: params.mode,
       dryRun: params.dryRun,
       expectedPluginId: params.expectedPluginId,
+      config: params.config,
     });
   }
 
@@ -544,6 +655,7 @@ export async function installPluginFromPath(params: {
       mode: params.mode,
       dryRun: params.dryRun,
       expectedPluginId: params.expectedPluginId,
+      config: params.config,
     });
   }
 
@@ -553,5 +665,6 @@ export async function installPluginFromPath(params: {
     logger: params.logger,
     mode: params.mode,
     dryRun: params.dryRun,
+    config: params.config,
   });
 }

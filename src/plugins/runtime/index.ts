@@ -1,4 +1,7 @@
+import fs from "node:fs/promises";
 import { createRequire } from "node:module";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { PluginRuntime } from "./types.js";
 import { resolveEffectiveMessagesConfig, resolveHumanDelayConfig } from "../../agents/identity.js";
 import { createMemoryGetTool, createMemorySearchTool } from "../../agents/tools/memory-tool.js";
@@ -82,10 +85,97 @@ import { resolveSlackChannelAllowlist } from "../../slack/resolve-channels.js";
 import { resolveSlackUserAllowlist } from "../../slack/resolve-users.js";
 import { sendMessageSlack } from "../../slack/send.js";
 import { textToSpeechTelephony } from "../../tts/tts.js";
-import { loadWebMedia } from "../../web/media.js";
+import { resolveUserPath } from "../../utils.js";
 import { formatNativeDependencyHint } from "./native-deps.js";
 
 let cachedVersion: string | null = null;
+
+type RuntimeLoadMediaOptions = {
+  maxBytes?: number;
+  ssrfPolicy?: unknown;
+  localRoots?: string[] | "any";
+  readFile?: (filePath: string) => Promise<Buffer>;
+};
+
+function assertLocalPathAllowed(
+  filePath: string,
+  localRoots: RuntimeLoadMediaOptions["localRoots"],
+) {
+  if (!localRoots || localRoots === "any") {
+    return;
+  }
+  const resolvedFile = path.resolve(filePath);
+  for (const root of localRoots) {
+    const resolvedRoot = path.resolve(root);
+    if (resolvedFile === resolvedRoot || resolvedFile.startsWith(`${resolvedRoot}${path.sep}`)) {
+      return;
+    }
+  }
+  throw new Error(`Local media path is not under an allowed directory: ${filePath}`);
+}
+
+function resolveRuntimeLoadMediaOptions(params: {
+  maxBytesOrOptions?: number | RuntimeLoadMediaOptions;
+  options?: { ssrfPolicy?: unknown; localRoots?: string[] | "any" };
+}): RuntimeLoadMediaOptions {
+  const { maxBytesOrOptions, options } = params;
+  if (typeof maxBytesOrOptions === "number" || maxBytesOrOptions === undefined) {
+    return {
+      maxBytes: maxBytesOrOptions,
+      ssrfPolicy: options?.ssrfPolicy,
+      localRoots: options?.localRoots,
+    };
+  }
+  return maxBytesOrOptions;
+}
+
+const loadRuntimeMedia: PluginRuntime["media"]["loadWebMedia"] = async (
+  mediaUrl,
+  maxBytesOrOptions,
+  options,
+) => {
+  const resolvedOptions = resolveRuntimeLoadMediaOptions({ maxBytesOrOptions, options });
+  const maxBytes =
+    typeof resolvedOptions.maxBytes === "number" && Number.isFinite(resolvedOptions.maxBytes)
+      ? resolvedOptions.maxBytes
+      : undefined;
+  const resolvedUrl = (() => {
+    if (mediaUrl.startsWith("file://")) {
+      return fileURLToPath(mediaUrl);
+    }
+    if (mediaUrl.startsWith("~")) {
+      return resolveUserPath(mediaUrl);
+    }
+    return mediaUrl;
+  })();
+
+  if (/^https?:\/\//i.test(resolvedUrl)) {
+    const fetched = await fetchRemoteMedia({
+      url: resolvedUrl,
+      maxBytes,
+      ssrfPolicy: resolvedOptions.ssrfPolicy as Parameters<
+        typeof fetchRemoteMedia
+      >[0]["ssrfPolicy"],
+    });
+    return {
+      buffer: fetched.buffer,
+      contentType: fetched.contentType,
+      kind: mediaKindFromMime(fetched.contentType),
+      fileName: fetched.fileName,
+    };
+  }
+
+  assertLocalPathAllowed(resolvedUrl, resolvedOptions.localRoots);
+  const readFile = resolvedOptions.readFile ?? ((filePath: string) => fs.readFile(filePath));
+  const buffer = await readFile(resolvedUrl);
+  const contentType = await detectMime({ buffer, filePath: resolvedUrl });
+  return {
+    buffer,
+    contentType: contentType ?? undefined,
+    kind: mediaKindFromMime(contentType),
+    fileName: path.basename(resolvedUrl) || undefined,
+  };
+};
 
 function resolveVersion(): string {
   if (cachedVersion) {
@@ -115,7 +205,7 @@ export function createPluginRuntime(): PluginRuntime {
       formatNativeDependencyHint,
     },
     media: {
-      loadWebMedia,
+      loadWebMedia: loadRuntimeMedia,
       detectMime,
       mediaKindFromMime,
       isVoiceCompatibleAudio,

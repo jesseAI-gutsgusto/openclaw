@@ -397,11 +397,19 @@ importers:
         specifier: workspace:*
         version: link:../..
 
+  packages/contracts: {}
+
   packages/moltbot:
     dependencies:
       openclaw:
         specifier: workspace:*
         version: link:../..
+
+  packages/policy: {}
+
+  packages/run-orchestrator: {}
+
+  packages/tool-runtime: {}
 
   ui:
     dependencies:

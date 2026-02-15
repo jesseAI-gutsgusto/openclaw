@@ -1,8 +1,8 @@
 ---
-summary: "Advanced setup and development workflows for OpenClaw"
+summary: "Advanced setup and development workflows for B2B single-tenant OpenClaw"
 read_when:
   - Setting up a new machine
-  - You want “latest + greatest” without breaking your personal setup
+  - You want “latest + greatest” without breaking your customer-instance setup
 title: "Setup"
 ---
 
@@ -29,7 +29,7 @@ Last updated: 2026-01-01
 
 ## Tailoring strategy (so updates don’t hurt)
 
-If you want “100% tailored to me” _and_ easy updates, keep your customization in:
+If you want easy updates, keep your customer-specific customization in:
 
 - **Config:** `~/.openclaw/openclaw.json` (JSON/JSON5-ish)
 - **Workspace:** `~/.openclaw/workspace` (skills, prompts, memories; make it a private git repo)
@@ -61,10 +61,10 @@ node openclaw.mjs gateway --port 18789 --verbose
 1. Install + launch **OpenClaw.app** (menu bar).
 2. Complete the onboarding/permissions checklist (TCC prompts).
 3. Ensure Gateway is **Local** and running (the app manages it).
-4. Link surfaces (example: WhatsApp):
+4. Configure curated v1 integrations (Slack, Microsoft Teams, optional email webhook ingress):
 
 ```bash
-openclaw channels login
+openclaw configure
 ```
 
 5. Sanity check:
@@ -75,7 +75,7 @@ openclaw health
 
 If onboarding is not available in your build:
 
-- Run `openclaw setup`, then `openclaw channels login`, then start the Gateway manually (`openclaw gateway`).
+- Run `openclaw setup`, then `openclaw configure`, then start the Gateway manually (`openclaw gateway`).
 
 ## Bleeding edge workflow (Gateway in a terminal)
 
@@ -126,10 +126,9 @@ openclaw health
 
 Use this when debugging auth or deciding what to back up:
 
-- **WhatsApp**: `~/.openclaw/credentials/whatsapp/<accountId>/creds.json`
-- **Telegram bot token**: config/env or `channels.telegram.tokenFile`
-- **Discord bot token**: config/env (token file not yet supported)
 - **Slack tokens**: config/env (`channels.slack.*`)
+- **Microsoft Teams credentials**: config/env (`channels.msteams.*`)
+- **Webhook ingress secret**: config/env (`hooks.token`)
 - **Pairing allowlists**: `~/.openclaw/credentials/<channel>-allowFrom.json`
 - **Model auth profiles**: `~/.openclaw/agents/<agentId>/agent/auth-profiles.json`
 - **Legacy OAuth import**: `~/.openclaw/credentials/oauth.json`
@@ -157,6 +156,6 @@ user service (no lingering needed). See [Gateway runbook](/gateway) for the syst
 
 - [Gateway runbook](/gateway) (flags, supervision, ports)
 - [Gateway configuration](/gateway/configuration) (config schema + examples)
-- [Discord](/channels/discord) and [Telegram](/channels/telegram) (reply tags + replyToMode settings)
+- [Slack](/channels/slack), [Microsoft Teams](/channels/msteams), and [Webhook ingest](/automation/webhook)
 - [OpenClaw assistant setup](/start/openclaw)
 - [macOS app](/platforms/macos) (gateway lifecycle)

@@ -1,5 +1,5 @@
 ---
-summary: "Curated links to the most used OpenClaw docs."
+summary: "Curated links for the B2B single-tenant OpenClaw baseline."
 read_when:
   - You want quick access to key docs pages
 title: "Docs directory"
@@ -14,43 +14,35 @@ For a complete map of the docs, see [Docs hubs](/start/hubs).
 
 - [Docs hubs (all pages linked)](/start/hubs)
 - [Help](/help)
+- [OpenClaw assistant setup](/start/openclaw)
+- [Onboarding wizard (CLI)](/start/wizard)
+- [Gateway runbook](/gateway)
 - [Configuration](/gateway/configuration)
 - [Configuration examples](/gateway/configuration-examples)
 - [Slash commands](/tools/slash-commands)
 - [Multi-agent routing](/concepts/multi-agent)
 - [Updating and rollback](/install/updating)
-- [Pairing (DM and nodes)](/channels/pairing)
+- [Pairing (DM access)](/channels/pairing)
 - [Nix mode](/install/nix)
-- [OpenClaw assistant setup](/start/openclaw)
 - [Skills](/tools/skills)
 - [Skills config](/tools/skills-config)
 - [Workspace templates](/reference/templates/AGENTS)
 - [RPC adapters](/reference/rpc)
-- [Gateway runbook](/gateway)
-- [Nodes (iOS and Android)](/nodes)
-- [Web surfaces (Control UI)](/web)
 - [Discovery and transports](/gateway/discovery)
 - [Remote access](/gateway/remote)
 
-## Providers and UX
+## Channels and UI
 
-- [WebChat](/web/webchat)
 - [Control UI (browser)](/web/control-ui)
-- [Telegram](/channels/telegram)
-- [Discord](/channels/discord)
-- [Mattermost (plugin)](/channels/mattermost)
-- [BlueBubbles (iMessage)](/channels/bluebubbles)
-- [iMessage (legacy)](/channels/imessage)
-- [Groups](/channels/groups)
-- [WhatsApp group messages](/channels/group-messages)
-- [Media images](/nodes/images)
-- [Media audio](/nodes/audio)
+- [Chat channels](/channels)
+- [Slack](/channels/slack)
+- [Microsoft Teams](/channels/msteams)
+- [Email webhook ingress](/automation/webhook)
+- [WebChat](/web/webchat)
 
 ## Companion apps
 
 - [macOS app](/platforms/macos)
-- [iOS app](/platforms/ios)
-- [Android app](/platforms/android)
 - [Windows (WSL2)](/platforms/windows)
 - [Linux app](/platforms/linux)
 
@@ -58,7 +50,7 @@ For a complete map of the docs, see [Docs hubs](/start/hubs).
 
 - [Sessions](/concepts/session)
 - [Cron jobs](/automation/cron-jobs)
-- [Webhooks](/automation/webhook)
+- [Email webhook ingest](/automation/webhook)
 - [Gmail hooks (Pub/Sub)](/automation/gmail-pubsub)
 - [Security](/gateway/security)
 - [Troubleshooting](/gateway/troubleshooting)

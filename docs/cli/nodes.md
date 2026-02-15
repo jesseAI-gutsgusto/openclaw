@@ -12,9 +12,9 @@ Manage paired nodes (devices) and invoke node capabilities.
 
 Related:
 
-- Nodes overview: [Nodes](/nodes)
-- Camera: [Camera nodes](/nodes/camera)
-- Images: [Image nodes](/nodes/images)
+- Gateway pairing: [Gateway pairing](/gateway/pairing)
+- Gateway troubleshooting: [Gateway troubleshooting](/gateway/troubleshooting)
+- Node host CLI: [node](/cli/node)
 
 Common options:
 

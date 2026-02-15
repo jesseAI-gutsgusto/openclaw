@@ -1,12 +1,5 @@
-import type {
-  InvocationOptions,
-  MaybePromise,
-  RetryOptions,
-  ToolInput,
-  ToolMap,
-  ToolOutput,
-} from "./types";
-import { ToolRegistry } from "./registry";
+import type { InvocationOptions, MaybePromise, RetryOptions, ToolMap } from "./types.js";
+import { ToolRegistry } from "./registry.js";
 
 interface NormalizedRetryOptions {
   maxAttempts: number;
@@ -46,12 +39,6 @@ export class ToolRuntime<TContext = unknown, TTools extends ToolMap<TContext> = 
     this.#defaultOptions = defaultOptions;
   }
 
-  invoke<TKey extends keyof TTools & string>(
-    name: TKey,
-    input: ToolInput<TTools[TKey]>,
-    context: TContext,
-    options?: InvocationOptions,
-  ): Promise<ToolOutput<TTools[TKey]>>;
   invoke<TInput = unknown, TOutput = unknown>(
     name: string,
     input: TInput,

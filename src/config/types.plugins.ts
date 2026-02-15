@@ -25,6 +25,8 @@ export type PluginInstallRecord = {
 export type PluginsConfig = {
   /** Enable or disable plugin loading. */
   enabled?: boolean;
+  /** Plugin governance trust mode. */
+  trustMode?: "signed" | "curated";
   /** Optional plugin allowlist (plugin ids). */
   allow?: string[];
   /** Optional plugin denylist (plugin ids). */

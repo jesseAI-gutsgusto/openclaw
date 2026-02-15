@@ -1,26 +1,28 @@
 ---
-summary: "CLI onboarding wizard: guided setup for gateway, workspace, channels, and skills"
+summary: "CLI onboarding wizard for B2B single-tenant customer instances"
 read_when:
-  - Running or configuring the onboarding wizard
-  - Setting up a new machine
-title: "Onboarding Wizard (CLI)"
+  - Running onboarding for a customer deployment
+  - Reconfiguring integrations and sandbox policy
+title: "Onboarding wizard (CLI)"
 sidebarTitle: "Onboarding: CLI"
 ---
 
-# Onboarding Wizard (CLI)
+# Onboarding wizard (CLI)
 
-The onboarding wizard is the **recommended** way to set up OpenClaw on macOS,
-Linux, or Windows (via WSL2; strongly recommended).
-It configures a local Gateway or a remote Gateway connection, plus channels, skills,
-and workspace defaults in one guided flow.
+The onboarding wizard is the recommended way to create a customer-isolated OpenClaw deployment on macOS, Linux, or Windows (WSL2).
 
 ```bash
 openclaw onboard
 ```
 
+In the B2B profile, the wizard sets up:
+
+- One Gateway instance for one customer
+- Curated v1 integrations (Slack, Microsoft Teams, email webhook ingress)
+- Safety defaults with risky execution routed to sandbox lanes
+
 <Info>
-Fastest first chat: open the Control UI (no channel setup needed). Run
-`openclaw dashboard` and chat in the browser. Docs: [Dashboard](/web/dashboard).
+Need a fast smoke test before channel setup? Run `openclaw dashboard` and send a local chat in the Control UI.
 </Info>
 
 To reconfigure later:
@@ -34,55 +36,45 @@ openclaw agents add <name>
 `--json` does not imply non-interactive mode. For scripts, use `--non-interactive`.
 </Note>
 
-<Tip>
-Recommended: set up a Brave Search API key so the agent can use `web_search`
-(`web_fetch` works without a key). Easiest path: `openclaw configure --section web`
-which stores `tools.web.search.apiKey`. Docs: [Web tools](/tools/web).
-</Tip>
+## QuickStart vs advanced
 
-## QuickStart vs Advanced
-
-The wizard starts with **QuickStart** (defaults) vs **Advanced** (full control).
+The wizard starts with QuickStart (defaults) or Advanced (full control).
 
 <Tabs>
   <Tab title="QuickStart (defaults)">
-    - Local gateway (loopback)
-    - Workspace default (or existing workspace)
-    - Gateway port **18789**
-    - Gateway auth **Token** (auto‑generated, even on loopback)
-    - Tailscale exposure **Off**
-    - Telegram + WhatsApp DMs default to **allowlist** (you'll be prompted for your phone number)
+    - Local gateway (`loopback`) with token auth
+    - Default workspace for this customer instance
+    - Guided setup for Slack, Microsoft Teams, and webhook ingress
+    - Baseline sandbox settings for non-main sessions
   </Tab>
   <Tab title="Advanced (full control)">
-    - Exposes every step (mode, workspace, gateway, channels, daemon, skills).
+    - Full control over gateway bind/auth, remote mode, workspace paths, and agent routing
+    - Explicit integration selection and credential prompts
+    - Policy tuning before first production traffic
   </Tab>
 </Tabs>
 
 ## What the wizard configures
 
-**Local mode (default)** walks you through these steps:
+In local mode, the wizard walks through:
 
-1. **Model/Auth** — Anthropic API key (recommended), OpenAI, or Custom Provider
-   (OpenAI-compatible, Anthropic-compatible, or Unknown auto-detect). Pick a default model.
-2. **Workspace** — Location for agent files (default `~/.openclaw/workspace`). Seeds bootstrap files.
-3. **Gateway** — Port, bind address, auth mode, Tailscale exposure.
-4. **Channels** — WhatsApp, Telegram, Discord, Google Chat, Mattermost, Signal, BlueBubbles, or iMessage.
-5. **Daemon** — Installs a LaunchAgent (macOS) or systemd user unit (Linux/WSL2).
-6. **Health check** — Starts the Gateway and verifies it's running.
-7. **Skills** — Installs recommended skills and optional dependencies.
+1. Model and auth provider.
+2. Customer workspace path and bootstrap files.
+3. Gateway bind/auth settings.
+4. Curated integrations: Slack, Microsoft Teams, and optional email webhook ingress.
+5. Sandbox-lane policy for risky tools.
+6. Health check and daemon setup.
+7. Optional skill installation.
 
 <Note>
-Re-running the wizard does **not** wipe anything unless you explicitly choose **Reset** (or pass `--reset`).
-If the config is invalid or contains legacy keys, the wizard asks you to run `openclaw doctor` first.
+Re-running the wizard does not wipe existing config unless you choose reset (or pass `--reset`).
 </Note>
 
-**Remote mode** only configures the local client to connect to a Gateway elsewhere.
-It does **not** install or change anything on the remote host.
+Remote mode configures the local client to connect to an existing Gateway and does not mutate the remote host.
 
-## Add another agent
+## Add another customer instance
 
-Use `openclaw agents add <name>` to create a separate agent with its own workspace,
-sessions, and auth profiles. Running without `--workspace` launches the wizard.
+Use `openclaw agents add <name>` when you need another isolated instance in the same operator environment.
 
 What it sets:
 
@@ -90,21 +82,11 @@ What it sets:
 - `agents.list[].workspace`
 - `agents.list[].agentDir`
 
-Notes:
-
-- Default workspaces follow `~/.openclaw/workspace-<agentId>`.
-- Add `bindings` to route inbound messages (the wizard can do this).
-- Non-interactive flags: `--model`, `--agent-dir`, `--bind`, `--non-interactive`.
-
-## Full reference
-
-For detailed step-by-step breakdowns, non-interactive scripting, Signal setup,
-RPC API, and a full list of config fields the wizard writes, see the
-[Wizard Reference](/reference/wizard).
+Use per-customer bindings to avoid cross-customer routing.
 
 ## Related docs
 
-- CLI command reference: [`openclaw onboard`](/cli/onboard)
-- Onboarding overview: [Onboarding Overview](/start/onboarding-overview)
-- macOS app onboarding: [Onboarding](/start/onboarding)
-- Agent first-run ritual: [Agent Bootstrapping](/start/bootstrapping)
+- B2B setup guide: [Single-tenant customer setup](/start/openclaw)
+- Channel scope: [Chat channels](/channels)
+- Security model: [Security](/gateway/security)
+- Wizard command reference: [`openclaw onboard`](/cli/onboard)

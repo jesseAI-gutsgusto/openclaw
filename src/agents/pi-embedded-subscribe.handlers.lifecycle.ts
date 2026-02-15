@@ -1,17 +1,20 @@
 import type { AgentEvent } from "@mariozechner/pi-agent-core";
 import type { EmbeddedPiSubscribeContext } from "./pi-embedded-subscribe.handlers.types.js";
 import { emitAgentEvent } from "../infra/agent-events.js";
+import { markRunCompleted, markRunStarted } from "../infra/run-events.js";
 import { createInlineCodeState } from "../markdown/code-spans.js";
 import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
 
 export function handleAgentStart(ctx: EmbeddedPiSubscribeContext) {
   ctx.log.debug(`embedded run agent start: runId=${ctx.params.runId}`);
+  const startedAt = Date.now();
+  markRunStarted(ctx.params.runId, { at: new Date(startedAt) });
   emitAgentEvent({
     runId: ctx.params.runId,
     stream: "lifecycle",
     data: {
       phase: "start",
-      startedAt: Date.now(),
+      startedAt,
     },
   });
   void ctx.params.onAgentEvent?.({
@@ -95,12 +98,14 @@ export function handleAutoCompactionEnd(
 
 export function handleAgentEnd(ctx: EmbeddedPiSubscribeContext) {
   ctx.log.debug(`embedded run agent end: runId=${ctx.params.runId}`);
+  const endedAt = Date.now();
+  markRunCompleted(ctx.params.runId, { at: new Date(endedAt) });
   emitAgentEvent({
     runId: ctx.params.runId,
     stream: "lifecycle",
     data: {
       phase: "end",
-      endedAt: Date.now(),
+      endedAt,
     },
   });
   void ctx.params.onAgentEvent?.({

@@ -93,12 +93,36 @@ const MemorySchema = z
   .strict()
   .optional();
 
+const ToolsGovernanceSchema = ToolsSchema.unwrap()
+  .extend({
+    riskyExecution: z.literal("sandbox_only").optional(),
+    riskyRequireApproval: z.boolean().optional(),
+  })
+  .optional();
+
 export const OpenClawSchema = z
   .object({
     meta: z
       .object({
         lastTouchedVersion: z.string().optional(),
         lastTouchedAt: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+    deployment: z
+      .object({
+        mode: z.literal("b2b").optional(),
+      })
+      .strict()
+      .optional(),
+    security: z
+      .object({
+        egress: z
+          .object({
+            allowlist: z.array(z.string()).optional(),
+          })
+          .strict()
+          .optional(),
       })
       .strict()
       .optional(),
@@ -275,7 +299,7 @@ export const OpenClawSchema = z
     models: ModelsConfigSchema,
     nodeHost: NodeHostSchema,
     agents: AgentsSchema,
-    tools: ToolsSchema,
+    tools: ToolsGovernanceSchema,
     bindings: BindingsSchema,
     broadcast: BroadcastSchema,
     audio: AudioSchema,
@@ -559,6 +583,7 @@ export const OpenClawSchema = z
     plugins: z
       .object({
         enabled: z.boolean().optional(),
+        trustMode: z.union([z.literal("signed"), z.literal("curated")]).optional(),
         allow: z.array(z.string()).optional(),
         deny: z.array(z.string()).optional(),
         load: z

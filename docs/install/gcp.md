@@ -500,5 +500,5 @@ See [https://cloud.google.com/iam/docs/understanding-roles](https://cloud.google
 ## Next steps
 
 - Set up messaging channels: [Channels](/channels)
-- Pair local devices as nodes: [Nodes](/nodes)
+- Configure remote access: [Gateway remote](/gateway/remote)
 - Configure the Gateway: [Gateway configuration](/gateway/configuration)

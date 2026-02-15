@@ -4,7 +4,7 @@ export {
   createQueuedRunState,
   emitRunEvent,
   transitionRunState,
-} from "./orchestrator";
+} from "./orchestrator.js";
 
 export type {
   RunEvent,
@@ -13,4 +13,4 @@ export type {
   RunStateChangedEvent,
   RunStatus,
   RunTransitionOptions,
-} from "./types";
+} from "./types.js";

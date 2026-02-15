@@ -366,8 +366,8 @@ disk as enough for personal use, and note that a **Raspberry Pi 4 can run it**.
 If you want extra headroom (logs, media, other services), **2GB is recommended**, but it's
 not a hard minimum.
 
-Tip: a small Pi/VPS can host the Gateway, and you can pair **nodes** on your laptop/phone for
-local screen/camera/canvas or command execution. See [Nodes](/nodes).
+Tip: a small Pi/VPS can host the Gateway, and you can operate it remotely from your laptop/phone
+via Control UI, SSH tunneling, or Tailscale. See [Gateway remote](/gateway/remote).
 
 ### Any tips for Raspberry Pi installs
 
@@ -620,12 +620,10 @@ How it works in the cloud: the **Gateway runs on the server**, and you access it
 from your laptop/phone via the Control UI (or Tailscale/SSH). Your state + workspace
 live on the server, so treat the host as the source of truth and back it up.
 
-You can pair **nodes** (Mac/iOS/Android/headless) to that cloud Gateway to access
-local screen/camera/canvas or run commands on your laptop while keeping the
-Gateway in the cloud.
+Use secure remote access patterns (Control UI, SSH tunnel, or Tailscale) to work with that
+cloud Gateway from your laptop/phone.
 
 Hub: [Platforms](/platforms). Remote access: [Gateway remote](/gateway/remote).
-Nodes: [Nodes](/nodes), [Nodes CLI](/cli/nodes).
 
 ### Can I ask OpenClaw to update itself
 
@@ -753,21 +751,22 @@ Pick region-pinned endpoints. OpenRouter exposes US-hosted options for MiniMax, 
 No. OpenClaw runs on macOS or Linux (Windows via WSL2). A Mac mini is optional - some people
 buy one as an always-on host, but a small VPS, home server, or Raspberry Pi-class box works too.
 
-You only need a Mac **for macOS-only tools**. For iMessage, use [BlueBubbles](/channels/bluebubbles) (recommended) - the BlueBubbles server runs on any Mac, and the Gateway can run on Linux or elsewhere. If you want other macOS-only tools, run the Gateway on a Mac or pair a macOS node.
+You only need a Mac **for macOS-only tools**. iMessage and BlueBubbles are not part of the
+curated B2B v1 channel surface; use Slack, Microsoft Teams, or email webhook ingress instead.
 
-Docs: [BlueBubbles](/channels/bluebubbles), [Nodes](/nodes), [Mac remote mode](/platforms/mac/remote).
+Docs: [Chat channels](/channels), [Mac remote mode](/platforms/mac/remote).
 
 ### Do I need a Mac mini for iMessage support
 
-You need **some macOS device** signed into Messages. It does **not** have to be a Mac mini -
-any Mac works. **Use [BlueBubbles](/channels/bluebubbles)** (recommended) for iMessage - the BlueBubbles server runs on macOS, while the Gateway can run on Linux or elsewhere.
+For the curated B2B v1 docs surface, iMessage support is out of scope.
+Use Slack, Microsoft Teams, or email webhook ingress.
 
 Common setups:
 
-- Run the Gateway on Linux/VPS, and run the BlueBubbles server on any Mac signed into Messages.
-- Run everything on the Mac if you want the simplest single‑machine setup.
+- Run the Gateway on Linux/VPS and use remote access from your laptop.
+- Run everything on a Mac if you want a single-machine setup.
 
-Docs: [BlueBubbles](/channels/bluebubbles), [Nodes](/nodes),
+Docs: [Chat channels](/channels), [Gateway remote](/gateway/remote),
 [Mac remote mode](/platforms/mac/remote).
 
 ### If I buy a Mac mini to run OpenClaw can I connect it to my MacBook Pro
@@ -782,7 +781,7 @@ Common pattern:
 - MacBook Pro runs the macOS app or a node host and pairs to the Gateway.
 - Use `openclaw nodes status` / `openclaw nodes list` to see it.
 
-Docs: [Nodes](/nodes), [Nodes CLI](/cli/nodes).
+Docs: [Gateway remote](/gateway/remote), [Mac remote mode](/platforms/mac/remote).
 
 ### Can I use Bun
 
@@ -896,7 +895,7 @@ Not required, but **recommended for reliability and isolation**.
 - **Dedicated host (VPS/Mac mini/Pi):** always-on, fewer sleep/reboot interruptions, cleaner permissions, easier to keep running.
 - **Shared laptop/desktop:** totally fine for testing and active use, but expect pauses when the machine sleeps or updates.
 
-If you want the best of both worlds, keep the Gateway on a dedicated host and pair your laptop as a **node** for local screen/camera/exec tools. See [Nodes](/nodes).
+If you want the best of both worlds, keep the Gateway on a dedicated host and connect through secure remote access workflows. See [Gateway remote](/gateway/remote).
 For security guidance, read [Security](/gateway/security).
 
 ### What are the minimum VPS requirements and recommended OS
@@ -1436,7 +1435,7 @@ The common pattern is **one Gateway** (e.g. Raspberry Pi) plus **nodes** and **a
 - **Sub-agents:** spawn background work from a main agent when you want parallelism.
 - **TUI:** connect to the Gateway and switch agents/sessions.
 
-Docs: [Nodes](/nodes), [Remote access](/gateway/remote), [Multi-Agent Routing](/concepts/multi-agent), [Sub-agents](/tools/subagents), [TUI](/web/tui).
+Docs: [Remote access](/gateway/remote), [Multi-Agent Routing](/concepts/multi-agent), [Sub-agents](/tools/subagents), [TUI](/web/tui).
 
 ### Can the OpenClaw browser run headless
 
@@ -1501,7 +1500,7 @@ No separate TCP bridge is required; nodes connect over the Gateway WebSocket.
 Security reminder: pairing a macOS node allows `system.run` on that machine. Only
 pair devices you trust, and review [Security](/gateway/security).
 
-Docs: [Nodes](/nodes), [Gateway protocol](/gateway/protocol), [macOS remote mode](/platforms/mac/remote), [Security](/gateway/security).
+Docs: [Gateway protocol](/gateway/protocol), [macOS remote mode](/platforms/mac/remote), [Security](/gateway/security).
 
 ### Tailscale is connected but I get no replies What now
 
@@ -1569,7 +1568,7 @@ setup is an always-on host plus your laptop as a node.
 SSH is fine for ad-hoc shell access, but nodes are simpler for ongoing agent workflows and
 device automation.
 
-Docs: [Nodes](/nodes), [Nodes CLI](/cli/nodes), [Chrome extension](/tools/chrome-extension).
+Docs: [node CLI](/cli/node), [Chrome extension](/tools/chrome-extension).
 
 ### Should I install on a second laptop or just add a node
 
@@ -1579,7 +1578,7 @@ currently macOS-only, but we plan to extend them to other OSes.
 
 Install a second Gateway only when you need **hard isolation** or two fully separate bots.
 
-Docs: [Nodes](/nodes), [Nodes CLI](/cli/nodes), [Multiple gateways](/gateway/multiple-gateways).
+Docs: [node CLI](/cli/node), [Multiple gateways](/gateway/multiple-gateways).
 
 ### Do nodes run a gateway service
 
@@ -1948,7 +1947,7 @@ Best-practice setup:
 - Local browser via extension relay (or a node) when needed.
 
 Docs: [Multi-Agent Routing](/concepts/multi-agent), [Slack](/channels/slack),
-[Browser](/tools/browser), [Chrome extension](/tools/chrome-extension), [Nodes](/nodes).
+[Browser](/tools/browser), [Chrome extension](/tools/chrome-extension), [Gateway remote](/gateway/remote).
 
 ## Models: defaults, selection, aliases, switching
 
@@ -2669,7 +2668,7 @@ Also check:
 - The target channel supports outbound media and isn't blocked by allowlists.
 - The file is within the provider's size limits (images are resized to max 2048px).
 
-See [Images](/nodes/images).
+See [Slack](/channels/slack), [Microsoft Teams](/channels/msteams), and [Webhook automation](/automation/webhook).
 
 ## Security and access control
 

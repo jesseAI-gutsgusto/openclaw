@@ -1,5 +1,5 @@
-export { ToolRegistry } from "./registry";
-export { ToolRuntime, ToolNotFoundError, ToolTimeoutError } from "./runtime";
+export { ToolRegistry } from "./registry.js";
+export { ToolRuntime, ToolNotFoundError, ToolTimeoutError } from "./runtime.js";
 export type {
   AnyToolDefinition,
   InvocationOptions,
@@ -11,4 +11,4 @@ export type {
   ToolInvokeMeta,
   ToolMap,
   ToolOutput,
-} from "./types";
+} from "./types.js";

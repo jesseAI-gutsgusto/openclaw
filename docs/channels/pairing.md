@@ -1,103 +1,60 @@
 ---
-summary: "Pairing overview: approve who can DM you + which nodes can join"
+summary: "Pairing overview: approve who can DM your customer instance"
 read_when:
-  - Setting up DM access control
-  - Pairing a new iOS/Android node
-  - Reviewing OpenClaw security posture
+  - Setting up DM access control for Slack or Microsoft Teams
+  - Reviewing ingress auth and allowlist posture
 title: "Pairing"
 ---
 
 # Pairing
 
-“Pairing” is OpenClaw’s explicit **owner approval** step.
-It is used in two places:
+Pairing is OpenClaw's explicit owner-approval step for unknown DM senders.
+In the B2B v1 baseline, pairing applies to chat channels:
 
-1. **DM pairing** (who is allowed to talk to the bot)
-2. **Node pairing** (which devices/nodes are allowed to join the gateway network)
+- [Slack](/channels/slack)
+- [Microsoft Teams](/channels/msteams)
 
-Security context: [Security](/gateway/security)
+Email/webhook ingress uses token auth, not DM pairing. See [Webhooks](/automation/webhook).
 
-## 1) DM pairing (inbound chat access)
+## DM pairing flow
 
-When a channel is configured with DM policy `pairing`, unknown senders get a short code and their message is **not processed** until you approve.
-
-Default DM policies are documented in: [Security](/gateway/security)
+When a channel uses DM policy `pairing`, unknown senders receive a short code and
+that message is not processed until you approve the code.
 
 Pairing codes:
 
 - 8 characters, uppercase, no ambiguous chars (`0O1I`).
-- **Expire after 1 hour**. The bot only sends the pairing message when a new request is created (roughly once per hour per sender).
-- Pending DM pairing requests are capped at **3 per channel** by default; additional requests are ignored until one expires or is approved.
+- Expire after 1 hour.
+- Pending requests are rate-limited per channel.
 
-### Approve a sender
+## Approve a sender
 
 ```bash
-openclaw pairing list telegram
-openclaw pairing approve telegram <CODE>
+openclaw pairing list slack
+openclaw pairing approve slack <CODE>
 ```
 
-Supported channels: `telegram`, `whatsapp`, `signal`, `imessage`, `discord`, `slack`, `feishu`.
+Use the same commands with `msteams` for Microsoft Teams.
 
-### Where the state lives
+Supported v1 channel IDs: `slack`, `msteams`.
+
+## Where pairing state is stored
 
 Stored under `~/.openclaw/credentials/`:
 
 - Pending requests: `<channel>-pairing.json`
-- Approved allowlist store: `<channel>-allowFrom.json`
+- Approved allowlist: `<channel>-allowFrom.json`
 
-Treat these as sensitive (they gate access to your assistant).
+Treat these files as sensitive because they gate inbound chat access.
 
-## 2) Node device pairing (iOS/Android/macOS/headless nodes)
+## Webhook ingress auth (no pairing)
 
-Nodes connect to the Gateway as **devices** with `role: node`. The Gateway
-creates a device pairing request that must be approved.
-
-### Pair via Telegram (recommended for iOS)
-
-If you use the `device-pair` plugin, you can do first-time device pairing entirely from Telegram:
-
-1. In Telegram, message your bot: `/pair`
-2. The bot replies with two messages: an instruction message and a separate **setup code** message (easy to copy/paste in Telegram).
-3. On your phone, open the OpenClaw iOS app → Settings → Gateway.
-4. Paste the setup code and connect.
-5. Back in Telegram: `/pair approve`
-
-The setup code is a base64-encoded JSON payload that contains:
-
-- `url`: the Gateway WebSocket URL (`ws://...` or `wss://...`)
-- `token`: a short-lived pairing token
-
-Treat the setup code like a password while it is valid.
-
-### Approve a node device
-
-```bash
-openclaw devices list
-openclaw devices approve <requestId>
-openclaw devices reject <requestId>
-```
-
-### Node pairing state storage
-
-Stored under `~/.openclaw/devices/`:
-
-- `pending.json` (short-lived; pending requests expire)
-- `paired.json` (paired devices + tokens)
-
-### Notes
-
-- The legacy `node.pair.*` API (CLI: `openclaw nodes pending/approve`) is a
-  separate gateway-owned pairing store. WS nodes still require device pairing.
+Webhook/email ingestion is authenticated with `hooks.token` and does not use pairing codes.
+Use a dedicated secret and keep webhook endpoints on trusted networks.
 
 ## Related docs
 
-- Security model + prompt injection: [Security](/gateway/security)
-- Updating safely (run doctor): [Updating](/install/updating)
-- Channel configs:
-  - Telegram: [Telegram](/channels/telegram)
-  - WhatsApp: [WhatsApp](/channels/whatsapp)
-  - Signal: [Signal](/channels/signal)
-  - BlueBubbles (iMessage): [BlueBubbles](/channels/bluebubbles)
-  - iMessage (legacy): [iMessage](/channels/imessage)
-  - Discord: [Discord](/channels/discord)
-  - Slack: [Slack](/channels/slack)
+- Security model: [Security](/gateway/security)
+- Slack setup: [Slack](/channels/slack)
+- Microsoft Teams setup: [Microsoft Teams](/channels/msteams)
+- Webhook auth and routing: [Webhooks](/automation/webhook)

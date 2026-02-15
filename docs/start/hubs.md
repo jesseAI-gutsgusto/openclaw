@@ -1,5 +1,5 @@
 ---
-summary: "Hubs that link to every OpenClaw doc"
+summary: "Hubs that link to OpenClaw docs for the B2B single-tenant baseline"
 read_when:
   - You want a complete map of the documentation
 title: "Docs Hubs"
@@ -62,8 +62,6 @@ Use these hubs to discover every page, including deep dives and reference docs t
 - [Discovery + transports](/gateway/discovery)
 - [Bonjour](/gateway/bonjour)
 - [Channel routing](/channels/channel-routing)
-- [Groups](/channels/groups)
-- [Group messages](/channels/group-messages)
 - [Model failover](/concepts/model-failover)
 - [OAuth](/concepts/oauth)
 
@@ -71,18 +69,10 @@ Use these hubs to discover every page, including deep dives and reference docs t
 
 - [Chat channels hub](/channels)
 - [Model providers hub](/providers/models)
-- [WhatsApp](/channels/whatsapp)
-- [Telegram](/channels/telegram)
-- [Telegram (grammY notes)](/channels/grammy)
 - [Slack](/channels/slack)
-- [Discord](/channels/discord)
-- [Mattermost](/channels/mattermost) (plugin)
-- [Signal](/channels/signal)
-- [BlueBubbles (iMessage)](/channels/bluebubbles)
-- [iMessage (legacy)](/channels/imessage)
-- [Location parsing](/channels/location)
+- [Microsoft Teams](/channels/msteams)
 - [WebChat](/web/webchat)
-- [Webhooks](/automation/webhook)
+- [Email webhook ingress](/automation/webhook)
 - [Gmail Pub/Sub](/automation/gmail-pubsub)
 
 ## Gateway + operations
@@ -123,22 +113,10 @@ Use these hubs to discover every page, including deep dives and reference docs t
 - [Browser (Linux troubleshooting)](/tools/browser-linux-troubleshooting)
 - [Polls](/automation/poll)
 
-## Nodes, media, voice
-
-- [Nodes overview](/nodes)
-- [Camera](/nodes/camera)
-- [Images](/nodes/images)
-- [Audio](/nodes/audio)
-- [Location command](/nodes/location-command)
-- [Voice wake](/nodes/voicewake)
-- [Talk mode](/nodes/talk)
-
 ## Platforms
 
 - [Platforms overview](/platforms)
 - [macOS](/platforms/macos)
-- [iOS](/platforms/ios)
-- [Android](/platforms/android)
 - [Windows (WSL2)](/platforms/windows)
 - [Linux](/platforms/linux)
 - [Web surfaces](/web)
@@ -150,7 +128,6 @@ Use these hubs to discover every page, including deep dives and reference docs t
 - [macOS voice wake](/platforms/mac/voicewake)
 - [macOS voice overlay](/platforms/mac/voice-overlay)
 - [macOS WebChat](/platforms/mac/webchat)
-- [macOS Canvas](/platforms/mac/canvas)
 - [macOS child process](/platforms/mac/child-process)
 - [macOS health](/platforms/mac/health)
 - [macOS icon](/platforms/mac/icon)

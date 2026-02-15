@@ -5,6 +5,7 @@ import { agentCommand } from "../commands/agent.js";
 import { loadConfig } from "../config/config.js";
 import { updateSessionStore } from "../config/sessions.js";
 import { requestHeartbeatNow } from "../infra/heartbeat-wake.js";
+import { isRunEventV1, type RunEventV1 } from "../infra/run-events.js";
 import { enqueueSystemEvent } from "../infra/system-events.js";
 import { normalizeMainKey } from "../routing/session-key.js";
 import { defaultRuntime } from "../runtime.js";
@@ -15,16 +16,66 @@ import {
 } from "./session-utils.js";
 import { formatForLog } from "./ws-log.js";
 
+function parseEventPayload(payloadJSON?: string | null): unknown {
+  if (!payloadJSON) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(payloadJSON) as unknown;
+  } catch {
+    return undefined;
+  }
+}
+
+function resolveNodeRunEventPayload(
+  payload: unknown,
+): { runEvent: RunEventV1; sessionKey?: string } | undefined {
+  if (!payload || typeof payload !== "object") {
+    return undefined;
+  }
+  const record = payload as Record<string, unknown>;
+  const directSessionKey =
+    typeof record.sessionKey === "string" && record.sessionKey.trim()
+      ? record.sessionKey.trim()
+      : undefined;
+
+  if (isRunEventV1(payload)) {
+    return { runEvent: payload, ...(directSessionKey ? { sessionKey: directSessionKey } : {}) };
+  }
+
+  const nestedPayload = record.payload;
+  if (isRunEventV1(nestedPayload)) {
+    return {
+      runEvent: nestedPayload,
+      ...(directSessionKey ? { sessionKey: directSessionKey } : {}),
+    };
+  }
+
+  return undefined;
+}
+
 export const handleNodeEvent = async (ctx: NodeEventContext, nodeId: string, evt: NodeEvent) => {
   switch (evt.event) {
-    case "voice.transcript": {
-      if (!evt.payloadJSON) {
+    case "run.event": {
+      const payload = parseEventPayload(evt.payloadJSON);
+      const resolved = resolveNodeRunEventPayload(payload);
+      if (!resolved) {
         return;
       }
-      let payload: unknown;
-      try {
-        payload = JSON.parse(evt.payloadJSON) as unknown;
-      } catch {
+      const runPayload = {
+        event: "run.event" as const,
+        payload: resolved.runEvent,
+        ...(resolved.sessionKey ? { sessionKey: resolved.sessionKey } : {}),
+      };
+      ctx.broadcast("run.event", runPayload, { dropIfSlow: true });
+      if (resolved.sessionKey) {
+        ctx.nodeSendToSession(resolved.sessionKey, "run.event", runPayload);
+      }
+      return;
+    }
+    case "voice.transcript": {
+      const payload = parseEventPayload(evt.payloadJSON);
+      if (!payload) {
         return;
       }
       const obj =
@@ -89,9 +140,6 @@ export const handleNodeEvent = async (ctx: NodeEventContext, nodeId: string, evt
       return;
     }
     case "agent.request": {
-      if (!evt.payloadJSON) {
-        return;
-      }
       type AgentDeepLink = {
         message?: string;
         sessionKey?: string | null;
@@ -102,10 +150,8 @@ export const handleNodeEvent = async (ctx: NodeEventContext, nodeId: string, evt
         timeoutSeconds?: number | null;
         key?: string | null;
       };
-      let link: AgentDeepLink | null = null;
-      try {
-        link = JSON.parse(evt.payloadJSON) as AgentDeepLink;
-      } catch {
+      const link = parseEventPayload(evt.payloadJSON) as AgentDeepLink | undefined;
+      if (!link) {
         return;
       }
       const message = (link?.message ?? "").trim();
@@ -170,13 +216,8 @@ export const handleNodeEvent = async (ctx: NodeEventContext, nodeId: string, evt
       return;
     }
     case "chat.subscribe": {
-      if (!evt.payloadJSON) {
-        return;
-      }
-      let payload: unknown;
-      try {
-        payload = JSON.parse(evt.payloadJSON) as unknown;
-      } catch {
+      const payload = parseEventPayload(evt.payloadJSON);
+      if (!payload) {
         return;
       }
       const obj =
@@ -189,13 +230,8 @@ export const handleNodeEvent = async (ctx: NodeEventContext, nodeId: string, evt
       return;
     }
     case "chat.unsubscribe": {
-      if (!evt.payloadJSON) {
-        return;
-      }
-      let payload: unknown;
-      try {
-        payload = JSON.parse(evt.payloadJSON) as unknown;
-      } catch {
+      const payload = parseEventPayload(evt.payloadJSON);
+      if (!payload) {
         return;
       }
       const obj =
@@ -210,13 +246,8 @@ export const handleNodeEvent = async (ctx: NodeEventContext, nodeId: string, evt
     case "exec.started":
     case "exec.finished":
     case "exec.denied": {
-      if (!evt.payloadJSON) {
-        return;
-      }
-      let payload: unknown;
-      try {
-        payload = JSON.parse(evt.payloadJSON) as unknown;
-      } catch {
+      const payload = parseEventPayload(evt.payloadJSON);
+      if (!payload) {
         return;
       }
       const obj =

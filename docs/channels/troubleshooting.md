@@ -76,21 +76,6 @@ Full troubleshooting: [/channels/discord#troubleshooting](/channels/discord#trou
 
 Full troubleshooting: [/channels/slack#troubleshooting](/channels/slack#troubleshooting)
 
-## iMessage and BlueBubbles
-
-### iMessage and BlueBubbles failure signatures
-
-| Symptom                          | Fastest check                                                           | Fix                                                   |
-| -------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------- |
-| No inbound events                | Verify webhook/server reachability and app permissions                  | Fix webhook URL or BlueBubbles server state.          |
-| Can send but no receive on macOS | Check macOS privacy permissions for Messages automation                 | Re-grant TCC permissions and restart channel process. |
-| DM sender blocked                | `openclaw pairing list imessage` or `openclaw pairing list bluebubbles` | Approve pairing or update allowlist.                  |
-
-Full troubleshooting:
-
-- [/channels/imessage#troubleshooting-macos-privacy-and-security-tcc](/channels/imessage#troubleshooting-macos-privacy-and-security-tcc)
-- [/channels/bluebubbles#troubleshooting](/channels/bluebubbles#troubleshooting)
-
 ## Signal
 
 ### Signal failure signatures

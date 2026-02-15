@@ -11,9 +11,6 @@ import { getMachineDisplayName } from "../../../infra/machine-name.js";
 import { MAX_IMAGE_BYTES } from "../../../media/constants.js";
 import { getGlobalHookRunner } from "../../../plugins/hook-runner-global.js";
 import { isSubagentSessionKey, normalizeAgentId } from "../../../routing/session-key.js";
-import { resolveSignalReactionLevel } from "../../../signal/reaction-level.js";
-import { resolveTelegramInlineButtonsScope } from "../../../telegram/inline-buttons.js";
-import { resolveTelegramReactionLevel } from "../../../telegram/reaction-level.js";
 import { buildTtsSystemPromptHint } from "../../../tts/tts.js";
 import { resolveUserPath } from "../../../utils.js";
 import { normalizeMessageChannel } from "../../../utils/message-channel.js";
@@ -91,6 +88,98 @@ import { splitSdkTools } from "../tool-split.js";
 import { describeUnknownError, mapThinkingLevel } from "../utils.js";
 import { flushPendingToolResultsAfterIdle } from "../wait-for-idle-before-flush.js";
 import { detectAndLoadPromptImages } from "./images.js";
+
+type ReactionGuidanceLevel = "minimal" | "extensive";
+
+function resolveChannelConfigEntry(
+  cfg: EmbeddedRunAttemptParams["config"],
+  channelId: string,
+): Record<string, unknown> | undefined {
+  const channels = cfg?.channels as Record<string, unknown> | undefined;
+  const entry = channels?.[channelId];
+  return entry && typeof entry === "object" ? (entry as Record<string, unknown>) : undefined;
+}
+
+function resolveChannelAccountConfig(
+  channelConfig: Record<string, unknown> | undefined,
+  accountId: string | null | undefined,
+): Record<string, unknown> | undefined {
+  if (!channelConfig || !accountId) {
+    return undefined;
+  }
+  const accounts = channelConfig.accounts;
+  if (!accounts || typeof accounts !== "object") {
+    return undefined;
+  }
+  const normalized = accountId.trim();
+  if (!normalized) {
+    return undefined;
+  }
+  const entries = accounts as Record<string, unknown>;
+  const direct = entries[normalized];
+  if (direct && typeof direct === "object") {
+    return direct as Record<string, unknown>;
+  }
+  const matchKey = Object.keys(entries).find(
+    (key) => key.toLowerCase() === normalized.toLowerCase(),
+  );
+  const match = matchKey ? entries[matchKey] : undefined;
+  return match && typeof match === "object" ? (match as Record<string, unknown>) : undefined;
+}
+
+function hasInlineButtonsCapability(capabilities: unknown): boolean {
+  if (Array.isArray(capabilities)) {
+    return capabilities.some((entry) => String(entry).trim().toLowerCase() === "inlinebuttons");
+  }
+  if (!capabilities || typeof capabilities !== "object") {
+    return false;
+  }
+  const scope = (capabilities as { inlineButtons?: unknown }).inlineButtons;
+  if (typeof scope === "string") {
+    return scope.trim().toLowerCase() !== "off";
+  }
+  return Boolean(scope);
+}
+
+function shouldExposeInlineButtonsCapability(params: {
+  cfg: EmbeddedRunAttemptParams["config"];
+  channel: string | undefined;
+  accountId: string | null | undefined;
+}): boolean {
+  if (!params.cfg || params.channel !== "telegram") {
+    return false;
+  }
+  const channelConfig = resolveChannelConfigEntry(params.cfg, params.channel);
+  const accountConfig = resolveChannelAccountConfig(channelConfig, params.accountId);
+  return hasInlineButtonsCapability(accountConfig?.capabilities ?? channelConfig?.capabilities);
+}
+
+function resolveReactionGuidanceFallback(params: {
+  cfg: EmbeddedRunAttemptParams["config"];
+  channel: string | undefined;
+  accountId: string | null | undefined;
+}): { level: ReactionGuidanceLevel; channel: string } | undefined {
+  if (!params.cfg || !params.channel) {
+    return undefined;
+  }
+  const channelConfig = resolveChannelConfigEntry(params.cfg, params.channel);
+  const accountConfig = resolveChannelAccountConfig(channelConfig, params.accountId);
+  const rawLevel = accountConfig?.reactionLevel ?? channelConfig?.reactionLevel;
+  if (typeof rawLevel !== "string") {
+    return undefined;
+  }
+  const level = rawLevel.trim().toLowerCase();
+  if (level !== "minimal" && level !== "extensive") {
+    return undefined;
+  }
+  const channelLabel =
+    params.channel === "telegram"
+      ? "Telegram"
+      : params.channel === "signal"
+        ? "Signal"
+        : `${params.channel[0]?.toUpperCase() ?? ""}${params.channel.slice(1)}`;
+  return { level: level as ReactionGuidanceLevel, channel: channelLabel };
+}
 
 export function injectHistoryImagesIntoMessages(
   messages: AgentMessage[],
@@ -259,44 +348,27 @@ export async function runEmbeddedAttempt(
           accountId: params.agentAccountId,
         }) ?? [])
       : undefined;
-    if (runtimeChannel === "telegram" && params.config) {
-      const inlineButtonsScope = resolveTelegramInlineButtonsScope({
+    if (
+      shouldExposeInlineButtonsCapability({
         cfg: params.config,
-        accountId: params.agentAccountId ?? undefined,
-      });
-      if (inlineButtonsScope !== "off") {
-        if (!runtimeCapabilities) {
-          runtimeCapabilities = [];
-        }
-        if (
-          !runtimeCapabilities.some((cap) => String(cap).trim().toLowerCase() === "inlinebuttons")
-        ) {
-          runtimeCapabilities.push("inlineButtons");
-        }
+        channel: runtimeChannel,
+        accountId: params.agentAccountId,
+      })
+    ) {
+      if (!runtimeCapabilities) {
+        runtimeCapabilities = [];
+      }
+      if (
+        !runtimeCapabilities.some((cap) => String(cap).trim().toLowerCase() === "inlinebuttons")
+      ) {
+        runtimeCapabilities.push("inlineButtons");
       }
     }
-    const reactionGuidance =
-      runtimeChannel && params.config
-        ? (() => {
-            if (runtimeChannel === "telegram") {
-              const resolved = resolveTelegramReactionLevel({
-                cfg: params.config,
-                accountId: params.agentAccountId ?? undefined,
-              });
-              const level = resolved.agentReactionGuidance;
-              return level ? { level, channel: "Telegram" } : undefined;
-            }
-            if (runtimeChannel === "signal") {
-              const resolved = resolveSignalReactionLevel({
-                cfg: params.config,
-                accountId: params.agentAccountId ?? undefined,
-              });
-              const level = resolved.agentReactionGuidance;
-              return level ? { level, channel: "Signal" } : undefined;
-            }
-            return undefined;
-          })()
-        : undefined;
+    const reactionGuidance = resolveReactionGuidanceFallback({
+      cfg: params.config,
+      channel: runtimeChannel,
+      accountId: params.agentAccountId,
+    });
     const { defaultAgentId, sessionAgentId } = resolveSessionAgentIds({
       sessionKey: params.sessionKey,
       config: params.config,

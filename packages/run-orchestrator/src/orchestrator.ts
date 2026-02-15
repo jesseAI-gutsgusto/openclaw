@@ -4,7 +4,7 @@ import type {
   RunState,
   RunStatus,
   RunTransitionOptions,
-} from "./types";
+} from "./types.js";
 
 const VALID_TRANSITIONS: Record<RunStatus, readonly RunStatus[]> = {
   QUEUED: ["RUNNING", "CANCELLED"],

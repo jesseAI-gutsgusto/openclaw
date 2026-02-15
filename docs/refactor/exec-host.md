@@ -312,5 +312,5 @@ Option B:
 
 - [Exec tool](/tools/exec)
 - [Exec approvals](/tools/exec-approvals)
-- [Nodes](/nodes)
+- [Gateway pairing](/gateway/pairing)
 - [Elevated mode](/tools/elevated)

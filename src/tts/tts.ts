@@ -22,7 +22,6 @@ import type {
 } from "../config/types.tts.js";
 import { normalizeChannelId } from "../channels/plugins/index.js";
 import { logVerbose } from "../globals.js";
-import { stripMarkdown } from "../line/markdown-to-line.js";
 import { isVoiceCompatibleAudio } from "../media/audio.js";
 import { CONFIG_DIR, resolveUserPath } from "../utils.js";
 import {
@@ -85,6 +84,40 @@ const TELEPHONY_OUTPUT = {
 };
 
 const TTS_AUTO_MODES = new Set<TtsAutoMode>(["off", "always", "inbound", "tagged"]);
+
+/**
+ * TTS-safe markdown stripping kept local so TTS does not depend on channel-specific helpers.
+ */
+export function stripMarkdownForTts(text: string): string {
+  let result = text;
+
+  // Remove bold: **text** or __text__
+  result = result.replace(/\*\*(.+?)\*\*/g, "$1");
+  result = result.replace(/__(.+?)__/g, "$1");
+
+  // Remove italic: *text* or _text_ (but not already processed)
+  result = result.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "$1");
+  result = result.replace(/(?<!_)_(?!_)(.+?)(?<!_)_(?!_)/g, "$1");
+
+  // Remove strikethrough: ~~text~~
+  result = result.replace(/~~(.+?)~~/g, "$1");
+
+  // Remove headers: # Title, ## Title, etc.
+  result = result.replace(/^#{1,6}\s+(.+)$/gm, "$1");
+
+  // Remove blockquotes: > text
+  result = result.replace(/^>\s?(.*)$/gm, "$1");
+
+  // Remove horizontal rules: ---, ***, ___
+  result = result.replace(/^[-*_]{3,}$/gm, "");
+
+  // Remove inline code: `code`
+  result = result.replace(/`([^`]+)`/g, "$1");
+
+  // Clean up extra whitespace
+  result = result.replace(/\n{3,}/g, "\n\n");
+  return result.trim();
+}
 
 export type ResolvedTtsConfig = {
   auto: TtsAutoMode;
@@ -882,7 +915,7 @@ export async function maybeApplyTtsToPayload(params: {
     }
   }
 
-  textForAudio = stripMarkdown(textForAudio).trim(); // strip markdown for TTS (### → "hashtag" etc.)
+  textForAudio = stripMarkdownForTts(textForAudio).trim();
   if (textForAudio.length < 10) {
     return nextPayload;
   }

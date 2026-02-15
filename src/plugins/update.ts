@@ -210,6 +210,7 @@ export async function updateNpmInstalledPlugins(params: {
           mode: "update",
           dryRun: true,
           expectedPluginId: pluginId,
+          config: next,
           logger,
         });
       } catch (err) {
@@ -257,6 +258,7 @@ export async function updateNpmInstalledPlugins(params: {
         spec: record.spec,
         mode: "update",
         expectedPluginId: pluginId,
+        config: next,
         logger,
       });
     } catch (err) {
@@ -389,6 +391,7 @@ export async function syncPluginsForUpdateChannel(params: {
           spec,
           mode: "update",
           expectedPluginId: pluginId,
+          config: next,
           logger: params.logger,
         });
       } catch (err) {

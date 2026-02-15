@@ -10,6 +10,11 @@ import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
 import { isPlainObject } from "../utils.js";
 import { runBeforeToolCallHook } from "./pi-tools.before-tool-call.js";
 import { normalizeToolName } from "./tool-policy.js";
+import {
+  extractToolRuntimePolicyMetadata,
+  invokeToolWithRuntime,
+  type ToolRuntimeInvokeResult,
+} from "./tool-runtime-adapter.js";
 import { jsonResult } from "./tools/common.js";
 
 // oxlint-disable-next-line typescript/no-explicit-any
@@ -79,6 +84,42 @@ function splitToolExecuteArgs(args: ToolExecuteArgsAny): {
   };
 }
 
+type RuntimePolicyMetadata = Pick<
+  ToolRuntimeInvokeResult<unknown>,
+  "tool" | "policy" | "policyDecisionTrace"
+>;
+
+function attachPolicyMetadataToToolResult(
+  result: AgentToolResult<unknown>,
+  metadata: RuntimePolicyMetadata | undefined,
+): AgentToolResult<unknown> {
+  if (!metadata) {
+    return result;
+  }
+
+  const policyDecisionId = metadata.policy.decisionId;
+  const nextDetails = isPlainObject(result.details)
+    ? {
+        ...result.details,
+        policyDecisionId,
+        decisionId: policyDecisionId,
+        policyDecisionTrace: metadata.policyDecisionTrace,
+        toolInvocation: metadata.tool,
+        policy: metadata.policy,
+      }
+    : result.details;
+
+  return {
+    ...result,
+    ...(nextDetails !== result.details ? { details: nextDetails } : {}),
+    policyDecisionId,
+    decisionId: policyDecisionId,
+    policyDecisionTrace: metadata.policyDecisionTrace,
+    toolInvocation: metadata.tool,
+    policy: metadata.policy,
+  } as AgentToolResult<unknown>;
+}
+
 export function toToolDefinitions(tools: AnyAgentTool[]): ToolDefinition[] {
   return tools.map((tool) => {
     const name = tool.name || "tool";
@@ -90,6 +131,7 @@ export function toToolDefinitions(tools: AnyAgentTool[]): ToolDefinition[] {
       parameters: tool.parameters,
       execute: async (...args: ToolExecuteArgs): Promise<AgentToolResult<unknown>> => {
         const { toolCallId, params, onUpdate, signal } = splitToolExecuteArgs(args);
+        let runtimePolicyMetadata: RuntimePolicyMetadata | undefined;
         try {
           // Call before_tool_call hook
           const hookOutcome = await runBeforeToolCallHook({
@@ -101,7 +143,34 @@ export function toToolDefinitions(tools: AnyAgentTool[]): ToolDefinition[] {
             throw new Error(hookOutcome.reason);
           }
           const adjustedParams = hookOutcome.params;
-          const result = await tool.execute(toolCallId, adjustedParams, signal, onUpdate);
+          const invocation = await invokeToolWithRuntime<unknown, AgentToolResult<unknown>>({
+            toolName: normalizedName,
+            toolCallId,
+            input: adjustedParams,
+            invoke: async (input) => await tool.execute(toolCallId, input, signal, onUpdate),
+            policy: {
+              context: {
+                subject: "agent:pi-tool-definition-adapter",
+                resource: `tool:${normalizedName}`,
+                action: "invoke",
+                metadata: {
+                  toolCallId,
+                },
+              },
+              defaultAllowReason: "No denying policy configured in pi tool definition adapter.",
+            },
+            onPolicyDecision: (decision) => {
+              logDebug(
+                `tools: policy decision tool=${normalizedName} decisionId=${decision.decisionId} effect=${decision.effect} trace=${JSON.stringify(decision.trace)}`,
+              );
+            },
+          });
+          runtimePolicyMetadata = {
+            tool: invocation.tool,
+            policy: invocation.policy,
+            policyDecisionTrace: invocation.policyDecisionTrace,
+          };
+          const result = attachPolicyMetadataToToolResult(invocation.result, runtimePolicyMetadata);
 
           // Call after_tool_call hook
           const hookRunner = getGlobalHookRunner();
@@ -124,6 +193,18 @@ export function toToolDefinitions(tools: AnyAgentTool[]): ToolDefinition[] {
 
           return result;
         } catch (err) {
+          const errorPolicyMetadata = extractToolRuntimePolicyMetadata(err);
+          if (
+            errorPolicyMetadata?.policy &&
+            errorPolicyMetadata.tool &&
+            errorPolicyMetadata.policyDecisionTrace
+          ) {
+            runtimePolicyMetadata = {
+              tool: errorPolicyMetadata.tool,
+              policy: errorPolicyMetadata.policy,
+              policyDecisionTrace: errorPolicyMetadata.policyDecisionTrace,
+            };
+          }
           if (signal?.aborted) {
             throw err;
           }
@@ -140,11 +221,14 @@ export function toToolDefinitions(tools: AnyAgentTool[]): ToolDefinition[] {
           }
           logError(`[tools] ${normalizedName} failed: ${described.message}`);
 
-          const errorResult = jsonResult({
-            status: "error",
-            tool: normalizedName,
-            error: described.message,
-          });
+          const errorResult = attachPolicyMetadataToToolResult(
+            jsonResult({
+              status: "error",
+              tool: normalizedName,
+              error: described.message,
+            }),
+            runtimePolicyMetadata,
+          );
 
           // Call after_tool_call hook for errors too
           const hookRunner = getGlobalHookRunner();

@@ -2,8 +2,6 @@ import type { ChannelCapabilities, ChannelPlugin } from "../../channels/plugins/
 import type { OpenClawConfig } from "../../config/config.js";
 import { resolveChannelDefaultAccountId } from "../../channels/plugins/helpers.js";
 import { getChannelPlugin, listChannelPlugins } from "../../channels/plugins/index.js";
-import { fetchChannelPermissionsDiscord } from "../../discord/send.js";
-import { parseDiscordTarget } from "../../discord/targets.js";
 import { danger } from "../../globals.js";
 import { defaultRuntime, type RuntimeEnv } from "../../runtime.js";
 import { fetchSlackScopes, type SlackScopesResult } from "../../slack/scopes.js";
@@ -54,6 +52,8 @@ type ChannelCapabilitiesReport = {
 };
 
 const REQUIRED_DISCORD_PERMISSIONS = ["ViewChannel", "SendMessages"] as const;
+const LEGACY_DISCORD_PERMISSIONS_REMOVED_ERROR =
+  "Discord permission audit is unavailable in core. Install a Discord channel plugin to re-enable it.";
 
 const TEAMS_GRAPH_PERMISSION_HINTS: Record<string, string> = {
   "ChannelMessage.Read.All": "channel history",
@@ -121,7 +121,7 @@ function summarizeDiscordTarget(raw?: string): DiscordTargetSummary | undefined 
   if (!raw) {
     return undefined;
   }
-  const target = parseDiscordTarget(raw, { defaultKind: "channel" });
+  const target = parseDiscordTarget(raw);
   if (!target) {
     return { raw };
   }
@@ -141,6 +141,66 @@ function summarizeDiscordTarget(raw?: string): DiscordTargetSummary | undefined 
     };
   }
   return { raw, normalized: target.normalized };
+}
+
+function parseDiscordTarget(
+  raw: string,
+): { kind: "channel" | "user"; id: string; normalized: string } | undefined {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const mentionMatch = trimmed.match(/^<@!?(\d+)>$/);
+  if (mentionMatch) {
+    return { kind: "user", id: mentionMatch[1], normalized: trimmed };
+  }
+  if (trimmed.startsWith("user:")) {
+    const id = trimmed.slice("user:".length).trim();
+    return id ? { kind: "user", id, normalized: trimmed } : undefined;
+  }
+  if (trimmed.startsWith("channel:")) {
+    const id = trimmed.slice("channel:".length).trim();
+    return id ? { kind: "channel", id, normalized: trimmed } : undefined;
+  }
+  if (trimmed.startsWith("discord:")) {
+    const id = trimmed.slice("discord:".length).trim();
+    return id ? { kind: "user", id, normalized: trimmed } : undefined;
+  }
+  if (trimmed.startsWith("@")) {
+    const id = trimmed.slice(1).trim();
+    return id ? { kind: "user", id, normalized: trimmed } : undefined;
+  }
+  return { kind: "channel", id: trimmed, normalized: trimmed };
+}
+
+function extractActionDetails(value: unknown): Record<string, unknown> | undefined {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+  const result = value as {
+    details?: unknown;
+    content?: Array<{ type?: string; text?: string }>;
+  };
+  if (result.details && typeof result.details === "object") {
+    return result.details as Record<string, unknown>;
+  }
+  if (!Array.isArray(result.content)) {
+    return undefined;
+  }
+  for (const item of result.content) {
+    if (!item || item.type !== "text" || typeof item.text !== "string") {
+      continue;
+    }
+    try {
+      const parsed = JSON.parse(item.text) as unknown;
+      if (parsed && typeof parsed === "object") {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      // ignore non-JSON tool text output
+    }
+  }
+  return undefined;
 }
 
 function formatDiscordIntents(intents?: {
@@ -279,7 +339,9 @@ function formatProbeLines(channelId: string, probe: unknown): string[] {
 }
 
 async function buildDiscordPermissions(params: {
-  account: { token?: string; accountId?: string };
+  plugin: ChannelPlugin;
+  cfg: OpenClawConfig;
+  accountId: string;
   target?: string;
 }): Promise<{ target?: DiscordTargetSummary; report?: DiscordPermissionsReport }> {
   const target = summarizeDiscordTarget(params.target?.trim());
@@ -294,34 +356,61 @@ async function buildDiscordPermissions(params: {
       },
     };
   }
-  const token = params.account.token?.trim();
-  if (!token) {
+  if (!params.plugin.actions?.handleAction) {
     return {
       target,
       report: {
         channelId: target.channelId,
-        error: "Discord bot token missing for permission audit.",
+        error: LEGACY_DISCORD_PERMISSIONS_REMOVED_ERROR,
       },
     };
   }
   try {
-    const perms = await fetchChannelPermissionsDiscord(target.channelId, {
-      token,
-      accountId: params.account.accountId ?? undefined,
+    const actionResult = await params.plugin.actions.handleAction({
+      channel: params.plugin.id,
+      action: "permissions",
+      cfg: params.cfg,
+      params: {
+        channelId: target.channelId,
+        accountId: params.accountId,
+      },
+      accountId: params.accountId,
     });
+    const details = extractActionDetails(actionResult);
+    const permissions = Array.isArray(details?.permissions)
+      ? details.permissions.map((entry) => String(entry).trim()).filter(Boolean)
+      : undefined;
+    if (details && typeof details.error === "string" && details.error.trim()) {
+      return {
+        target,
+        report: {
+          channelId: target.channelId,
+          error: details.error,
+        },
+      };
+    }
+    if (!permissions) {
+      return {
+        target,
+        report: {
+          channelId: target.channelId,
+          error: LEGACY_DISCORD_PERMISSIONS_REMOVED_ERROR,
+        },
+      };
+    }
     const missing = REQUIRED_DISCORD_PERMISSIONS.filter(
-      (permission) => !perms.permissions.includes(permission),
+      (permission) => !permissions.includes(permission),
     );
     return {
       target,
       report: {
-        channelId: perms.channelId,
-        guildId: perms.guildId,
-        isDm: perms.isDm,
-        channelType: perms.channelType,
-        permissions: perms.permissions,
+        channelId: typeof details?.channelId === "string" ? details.channelId : target.channelId,
+        guildId: typeof details?.guildId === "string" ? details.guildId : undefined,
+        isDm: typeof details?.isDm === "boolean" ? details.isDm : undefined,
+        channelType: typeof details?.channelType === "number" ? details.channelType : undefined,
+        permissions,
         missingRequired: missing.length ? missing : [],
-        raw: perms.raw,
+        raw: typeof details?.raw === "string" ? details.raw : undefined,
       },
     };
   } catch (err) {
@@ -409,7 +498,9 @@ async function resolveChannelReports(params: {
     let discordPermissions: DiscordPermissionsReport | undefined;
     if (plugin.id === "discord" && params.target) {
       const perms = await buildDiscordPermissions({
-        account: resolvedAccount as { token?: string; accountId?: string },
+        plugin,
+        cfg,
+        accountId,
         target: params.target,
       });
       discordTarget = perms.target;

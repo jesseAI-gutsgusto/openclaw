@@ -34,10 +34,9 @@ deployments work at a high level.
 Remote access: [Gateway remote](/gateway/remote)  
 Platforms hub: [Platforms](/platforms)
 
-## Using nodes with a VPS
+## Remote access with a VPS
 
-You can keep the Gateway in the cloud and pair **nodes** on your local devices
-(Mac/iOS/Android/headless). Nodes provide local screen/camera/canvas and `system.run`
-capabilities while the Gateway stays in the cloud.
+Keep the Gateway in the cloud and operate it from your laptop/desktop over secure
+remote access (Control UI, SSH tunnel, or Tailscale).
 
-Docs: [Nodes](/nodes), [Nodes CLI](/cli/nodes)
+Docs: [Gateway remote](/gateway/remote), [Gateway protocol](/gateway/protocol)

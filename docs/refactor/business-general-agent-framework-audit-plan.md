@@ -11,7 +11,7 @@ title: "Business General Agent Framework Audit + Refactor Plan"
 
 **Date**: 2026-02-13  
 **Status**: In Progress  
-**Strategy**: Hard-break B2B baseline (no dual-mode migration path)
+**Strategy**: Hard-break B2B baseline (no compatibility migration path)
 
 ## Execution Status (2026-02-14)
 
@@ -29,23 +29,39 @@ Completed in `main`:
   - `packages/policy`
   - `packages/tool-runtime`
   - `packages/run-orchestrator`
+- Runtime wiring landed:
+  - central tool invocation adapter (`src/agents/tool-runtime-adapter.ts`) used by PI + gateway HTTP invoke paths
+  - policy decision traces emitted on tool invoke paths
+  - run lifecycle event bridge (`src/infra/run-events.ts`) backed by run-orchestrator transitions
+- B2B governance config keys landed:
+  - `deployment.mode`
+  - `security.egress.allowlist`
+  - `plugins.trustMode`
+  - `tools.riskyExecution`
+  - `tools.riskyRequireApproval`
+- Security default enforcement landed:
+  - `tools.riskyExecution="sandbox_only"` disables risky tools outside sandbox lanes
+  - `security.egress.allowlist` enforced for `web_fetch`
+- Plugin governance hardening landed:
+  - curated trust-mode gating for non-bundled plugins
+  - signed trust-mode checks in loader/install paths (manifest publisher/signature required)
 
 Current quality gates:
 
 - `pnpm check`: passing on 2026-02-14.
 - `pnpm test`: passing on 2026-02-14.
 
-Next waves:
+Remaining waves:
 
-- Wire new packages into runtime execution path (`RunEventV1`, policy traces, central tool invoke path).
-- Add plugin governance defaults (`trustMode`, `signed|curated` enforcement) in production path.
 - Continue docs rewrite to match B2B-only scope.
+- Complete broad integration of new run/tool/policy contracts across all gateway surfaces.
+- Finish source-delete wave for legacy non-v1 runtime channel modules under `src/**` where still present.
 
 ## 1) Executive summary
 
 OpenClaw already has strong building blocks for a Business General Agent (BGA): typed tools, policy layering, gateway scopes, approvals, plugin SDK, and diagnostics hooks. The main gap is not feature absence but **boundary strength**: customer-instance isolation, immutable audit model, strict extension governance, and clear separation between generic run orchestration and chat/channel UX.
 
-This plan intentionally drops consumer-first compatibility and rebuilds OpenClaw directly around B2B production constraints.
+This plan intentionally drops legacy compatibility paths and rebuilds OpenClaw directly around B2B production constraints.
 
 ## 2) Scope and success criteria
 
@@ -53,7 +69,7 @@ This plan intentionally drops consumer-first compatibility and rebuilds OpenClaw
 
 - Runtime architecture refactor to separate generic orchestrator from chat adapters.
 - Customer-instance-scoped policy and tool execution envelope.
-- Enterprise defaults for risky tools and network egress.
+- B2B production defaults for risky tools and network egress.
 - Plugin governance (manifest v2, permissions enforcement, signature/trust modes).
 - Audit/event contracts for run lifecycle and policy decisions.
 
@@ -65,8 +81,8 @@ This plan intentionally drops consumer-first compatibility and rebuilds OpenClaw
 
 ### Success criteria
 
-- Consumer-first compatibility is not a target in this roadmap.
-- Enterprise mode can deny risky paths by default without code changes.
+- Legacy compatibility is not a target in this roadmap.
+- B2B baseline can deny risky paths by default without code changes.
 - Every tool call and policy decision emits structured, queryable audit events.
 - Plugin runtime enforces permission boundaries in production by default.
 - Run lifecycle can execute without channel-specific logic.
@@ -123,18 +139,18 @@ This section reflects repository state verified in code, not assumptions.
 
 ### Governance and audit gaps
 
-- Eventing exists, but immutable enterprise-grade audit modeling is not yet universal.
+- Eventing exists, but immutable production-grade audit modeling is not yet universal.
 - Policy decisions are not consistently emitted as explicit trace objects across all paths.
 
 ### Plugin supply chain and runtime boundaries
 
 - Strongly governed trust modes (`signed`, `curated`) are not defaulted/enforced platform-wide.
-- Runtime capability exposure to plugins is broad relative to enterprise least-privilege expectations.
+- Runtime capability exposure to plugins is broad relative to B2B least-privilege expectations.
 
 ### Architecture boundaries
 
 - Generic run lifecycle remains coupled with channel UX logic.
-- Tool invocation logic is distributed; enterprise governance works best with one central invoke pipeline.
+- Tool invocation logic is distributed; B2B governance works best with one central invoke pipeline.
 
 ## 5) Target architecture (hard-break B2B baseline)
 
@@ -301,7 +317,7 @@ Acceptance:
 
 Deliverables:
 
-- Set production defaults directly (no dual-mode runtime).
+- Set production defaults directly (no alternate runtime profile).
 - Enforce `sandbox_only` execution for risky tool classes.
 - Enforce outbound allowlist for web-fetch/browser paths in production.
 
@@ -434,10 +450,10 @@ Acceptance:
 
 ## 14) Assumptions and defaults used in this plan
 
-- The objective is direct B2B rebuild, replacing consumer-first positioning in this branch.
+- The objective is direct B2B rebuild, replacing legacy multi-surface positioning in this branch.
 - Pi remains the orchestration engine in this roadmap.
 - Existing plugin and extension ecosystem remains available only via curated lanes.
-- Production defaults are always on (no opt-in mode split).
+- Production defaults are always on (no optional profile split).
 - Prior refactor docs under `docs/refactor/` remain authoritative inputs and should be linked from future updates.
 
 ## 15) Open follow-up items for expansion

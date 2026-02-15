@@ -1,8 +1,7 @@
 ---
-summary: "Run OpenClaw in a sandboxed macOS VM (local or hosted) when you need isolation or iMessage"
+summary: "Run OpenClaw in a sandboxed macOS VM (local or hosted) when you need isolation"
 read_when:
   - You want OpenClaw isolated from your main macOS environment
-  - You want iMessage integration (BlueBubbles) in a sandbox
   - You want a resettable macOS environment you can clone
   - You want to compare local vs hosted macOS VM options
 title: "macOS VMs"
@@ -14,9 +13,9 @@ title: "macOS VMs"
 
 - **Small Linux VPS** for an always-on Gateway and low cost. See [VPS hosting](/vps).
 - **Dedicated hardware** (Mac mini or Linux box) if you want full control and a **residential IP** for browser automation. Many sites block data center IPs, so local browsing often works better.
-- **Hybrid:** keep the Gateway on a cheap VPS, and connect your Mac as a **node** when you need browser/UI automation. See [Nodes](/nodes) and [Gateway remote](/gateway/remote).
+- **Hybrid:** keep the Gateway on a cheap VPS and use secure remote access from your Mac for browser/UI workflows. See [Gateway remote](/gateway/remote).
 
-Use a macOS VM when you specifically need macOS-only capabilities (iMessage/BlueBubbles) or want strict isolation from your daily Mac.
+Use a macOS VM when you need macOS-specific workflows or want strict isolation from your daily Mac.
 
 ## macOS VM options
 
@@ -27,7 +26,7 @@ Run OpenClaw in a sandboxed macOS VM on your existing Apple Silicon Mac using [L
 This gives you:
 
 - Full macOS environment in isolation (your host stays clean)
-- iMessage support via BlueBubbles (impossible on Linux/Windows)
+- Isolated browser and macOS workflow testing
 - Instant reset by cloning VMs
 - No extra hardware or cloud costs
 
@@ -101,7 +100,7 @@ Note: The download can take a while depending on your connection.
 In the VNC window:
 
 1. Select language and region
-2. Skip Apple ID (or sign in if you want iMessage later)
+2. Skip Apple ID (or sign in if your workflow requires it)
 3. Create a user account (remember the username and password)
 4. Skip all optional features
 
@@ -196,37 +195,6 @@ ssh youruser@192.168.64.X "openclaw status"
 
 ---
 
-## Bonus: iMessage integration
-
-This is the killer feature of running on macOS. Use [BlueBubbles](https://bluebubbles.app) to add iMessage to OpenClaw.
-
-Inside the VM:
-
-1. Download BlueBubbles from bluebubbles.app
-2. Sign in with your Apple ID
-3. Enable the Web API and set a password
-4. Point BlueBubbles webhooks at your gateway (example: `https://your-gateway-host:3000/bluebubbles-webhook?password=<password>`)
-
-Add to your OpenClaw config:
-
-```json
-{
-  "channels": {
-    "bluebubbles": {
-      "serverUrl": "http://localhost:1234",
-      "password": "your-api-password",
-      "webhookPath": "/bluebubbles-webhook"
-    }
-  }
-}
-```
-
-Restart the gateway. Now your agent can send and receive iMessages.
-
-Full setup details: [BlueBubbles channel](/channels/bluebubbles)
-
----
-
 ## Save a golden image
 
 Before customizing further, snapshot your clean state:
@@ -272,9 +240,8 @@ For true always-on, consider a dedicated Mac mini or a small VPS. See [VPS hosti
 ## Related docs
 
 - [VPS hosting](/vps)
-- [Nodes](/nodes)
 - [Gateway remote](/gateway/remote)
-- [BlueBubbles channel](/channels/bluebubbles)
+- [Chat channels](/channels)
 - [Lume Quickstart](https://cua.ai/docs/lume/guide/getting-started/quickstart)
 - [Lume CLI Reference](https://cua.ai/docs/lume/reference/cli-reference)
 - [Unattended VM Setup](https://cua.ai/docs/lume/guide/fundamentals/unattended-setup) (advanced)

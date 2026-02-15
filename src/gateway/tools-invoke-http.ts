@@ -15,10 +15,19 @@ import {
   resolveToolProfilePolicy,
   stripPluginOnlyAllowlist,
 } from "../agents/tool-policy.js";
+import {
+  extractToolRuntimePolicyMetadata,
+  invokeToolWithRuntime,
+} from "../agents/tool-runtime-adapter.js";
 import { ToolInputError } from "../agents/tools/common.js";
 import { loadConfig } from "../config/config.js";
 import { resolveMainSessionKey } from "../config/sessions.js";
-import { logWarn } from "../logger.js";
+import {
+  DEFAULT_POLICY_DECISION_ID,
+  emitRunToolCompletedEvent,
+  emitRunToolStartedEvent,
+} from "../infra/run-events.js";
+import { logDebug, logWarn } from "../logger.js";
 import { isTestDefaultMemorySlotDisabled } from "../plugins/config-state.js";
 import { getPluginToolMeta } from "../plugins/tools.js";
 import { isSubagentSessionKey } from "../routing/session-key.js";
@@ -58,6 +67,12 @@ type ToolsInvokeBody = {
   args?: unknown;
   sessionKey?: unknown;
   dryRun?: unknown;
+};
+
+type HttpInvokableTool = {
+  name: string;
+  parameters?: unknown;
+  execute?: (toolCallId: string, args: Record<string, unknown>) => unknown;
 };
 
 function resolveSessionKeyFromBody(body: ToolsInvokeBody): string | undefined {
@@ -360,21 +375,108 @@ export async function handleToolsInvokeHttpRequest(
     return true;
   }
 
-  try {
-    const toolArgs = mergeActionIntoArgsIfSupported({
-      // oxlint-disable-next-line typescript/no-explicit-any
-      toolSchema: (tool as any).parameters,
-      action,
-      args,
+  const invokableTool = tool as HttpInvokableTool;
+  const normalizedToolName = normalizeToolName(invokableTool.name);
+  const toolArgs = mergeActionIntoArgsIfSupported({
+    toolSchema: invokableTool.parameters,
+    action,
+    args,
+  });
+  const toolCallId = `http-${Date.now()}`;
+  const runId = `http-tools:${sessionKey}`;
+  let startedEmitted = false;
+  const emitStarted = (policyDecisionId?: string) => {
+    if (startedEmitted) {
+      return;
+    }
+    emitRunToolStartedEvent({
+      runId,
+      toolName: normalizedToolName,
+      toolCallId,
+      args: toolArgs,
+      policyDecisionId: policyDecisionId ?? DEFAULT_POLICY_DECISION_ID,
     });
-    // oxlint-disable-next-line typescript/no-explicit-any
-    const result = await (tool as any).execute?.(`http-${Date.now()}`, toolArgs);
-    sendJson(res, 200, { ok: true, result });
+    startedEmitted = true;
+  };
+
+  try {
+    const {
+      result,
+      tool: toolInvocation,
+      policy,
+      policyDecisionTrace,
+    } = await invokeToolWithRuntime<Record<string, unknown>, unknown>({
+      toolName: normalizedToolName,
+      toolCallId,
+      input: toolArgs,
+      invoke: async (input) => await invokableTool.execute?.(toolCallId, input),
+      policy: {
+        context: {
+          subject: `gateway:${sessionKey}`,
+          resource: `tool:${normalizedToolName}`,
+          action: "invoke",
+          metadata: {
+            endpoint: "/tools/invoke",
+            method: "POST",
+            toolCallId,
+            agentId,
+            messageChannel: messageChannel ?? null,
+            accountId: accountId ?? null,
+          },
+        },
+        defaultAllowReason: "Tool invocation allowed after gateway policy filtering.",
+      },
+      onPolicyDecision: (decision) => {
+        emitStarted(decision.decisionId);
+        logDebug(
+          `tools-invoke: policy decision tool=${normalizedToolName} decisionId=${decision.decisionId} effect=${decision.effect} trace=${JSON.stringify(decision.trace)}`,
+        );
+      },
+    });
+    emitStarted(policy.decisionId);
+    emitRunToolCompletedEvent({
+      runId,
+      toolName: normalizedToolName,
+      toolCallId,
+      args: toolArgs,
+      policyDecisionId: policy.decisionId,
+      policyDecisionTrace,
+      result,
+      isError: false,
+    });
+    sendJson(res, 200, {
+      ok: true,
+      result,
+      tool: toolInvocation,
+      policy,
+      policyDecisionId: policy.decisionId,
+      policyDecisionTrace,
+    });
   } catch (err) {
+    const policyMetadata = extractToolRuntimePolicyMetadata(err);
+    const decisionId = policyMetadata?.policy?.decisionId;
+    emitStarted(decisionId);
+    emitRunToolCompletedEvent({
+      runId,
+      toolName: normalizedToolName,
+      toolCallId,
+      args: toolArgs,
+      policyDecisionId: decisionId ?? DEFAULT_POLICY_DECISION_ID,
+      policyDecisionTrace: policyMetadata?.policyDecisionTrace,
+      isError: true,
+      errorMessage: getErrorMessage(err),
+    });
     if (isToolInputError(err)) {
       sendJson(res, 400, {
         ok: false,
         error: { type: "tool_error", message: getErrorMessage(err) || "invalid tool arguments" },
+        ...(policyMetadata?.policy ? { policy: policyMetadata.policy } : {}),
+        ...(policyMetadata?.policy?.decisionId
+          ? { policyDecisionId: policyMetadata.policy.decisionId }
+          : {}),
+        ...(policyMetadata?.policyDecisionTrace
+          ? { policyDecisionTrace: policyMetadata.policyDecisionTrace }
+          : {}),
       });
       return true;
     }
@@ -382,6 +484,13 @@ export async function handleToolsInvokeHttpRequest(
     sendJson(res, 500, {
       ok: false,
       error: { type: "tool_error", message: "tool execution failed" },
+      ...(policyMetadata?.policy ? { policy: policyMetadata.policy } : {}),
+      ...(policyMetadata?.policy?.decisionId
+        ? { policyDecisionId: policyMetadata.policy.decisionId }
+        : {}),
+      ...(policyMetadata?.policyDecisionTrace
+        ? { policyDecisionTrace: policyMetadata.policyDecisionTrace }
+        : {}),
     });
   }
 

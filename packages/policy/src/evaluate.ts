@@ -117,7 +117,11 @@ function normalizeReasons(input: PolicyReasonInput | undefined, effect: PolicyEf
   return [effect === "allow" ? DEFAULT_ALLOW_REASON : DEFAULT_DENY_REASON];
 }
 
-function normalizeStringArray(input: readonly string[] | undefined): string[] {
+function normalizeStringArray(input: PolicyReasonInput | undefined): string[] {
+  if (typeof input === "string") {
+    const trimmed = input.trim();
+    return trimmed.length > 0 ? [trimmed] : [];
+  }
   if (!Array.isArray(input)) {
     return [];
   }

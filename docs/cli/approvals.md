@@ -14,7 +14,7 @@ By default, commands target the local approvals file on disk. Use `--gateway` to
 Related:
 
 - Exec approvals: [Exec approvals](/tools/exec-approvals)
-- Nodes: [Nodes](/nodes)
+- Node host CLI: [node](/cli/node)
 
 ## Common commands
 

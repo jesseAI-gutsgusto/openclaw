@@ -104,6 +104,13 @@ function resolveExecConfig(cfg: OpenClawConfig | undefined) {
   };
 }
 
+function resolveRiskyExecutionMode(cfg: OpenClawConfig | undefined): "sandbox_only" | undefined {
+  const tools = cfg?.tools as
+    | (NonNullable<OpenClawConfig["tools"]> & { riskyExecution?: unknown })
+    | undefined;
+  return tools?.riskyExecution === "sandbox_only" ? "sandbox_only" : undefined;
+}
+
 export const __testing = {
   cleanToolSchemaForGemini,
   normalizeToolParams,
@@ -167,6 +174,14 @@ export function createOpenClawCodingTools(options?: {
 }): AnyAgentTool[] {
   const execToolName = "exec";
   const sandbox = options?.sandbox?.enabled ? options.sandbox : undefined;
+  const riskyExecutionMode = resolveRiskyExecutionMode(options?.config);
+  const riskyToolsSandboxOnly = riskyExecutionMode === "sandbox_only";
+  const disableRiskyTools = riskyToolsSandboxOnly && !sandbox;
+  if (disableRiskyTools) {
+    logWarn(
+      "tools: riskyExecution=sandbox_only active; disabling exec/process/browser tools outside sandbox.",
+    );
+  }
   const {
     agentId,
     globalPolicy,
@@ -285,38 +300,42 @@ export function createOpenClawCodingTools(options?: {
     return [tool];
   });
   const { cleanupMs: cleanupMsOverride, ...execDefaults } = options?.exec ?? {};
-  const execTool = createExecTool({
-    ...execDefaults,
-    host: options?.exec?.host ?? execConfig.host,
-    security: options?.exec?.security ?? execConfig.security,
-    ask: options?.exec?.ask ?? execConfig.ask,
-    node: options?.exec?.node ?? execConfig.node,
-    pathPrepend: options?.exec?.pathPrepend ?? execConfig.pathPrepend,
-    safeBins: options?.exec?.safeBins ?? execConfig.safeBins,
-    agentId,
-    cwd: options?.workspaceDir,
-    allowBackground,
-    scopeKey,
-    sessionKey: options?.sessionKey,
-    messageProvider: options?.messageProvider,
-    backgroundMs: options?.exec?.backgroundMs ?? execConfig.backgroundMs,
-    timeoutSec: options?.exec?.timeoutSec ?? execConfig.timeoutSec,
-    approvalRunningNoticeMs:
-      options?.exec?.approvalRunningNoticeMs ?? execConfig.approvalRunningNoticeMs,
-    notifyOnExit: options?.exec?.notifyOnExit ?? execConfig.notifyOnExit,
-    sandbox: sandbox
-      ? {
-          containerName: sandbox.containerName,
-          workspaceDir: sandbox.workspaceDir,
-          containerWorkdir: sandbox.containerWorkdir,
-          env: sandbox.docker.env,
-        }
-      : undefined,
-  });
-  const processTool = createProcessTool({
-    cleanupMs: cleanupMsOverride ?? execConfig.cleanupMs,
-    scopeKey,
-  });
+  const execTool = disableRiskyTools
+    ? null
+    : createExecTool({
+        ...execDefaults,
+        host: options?.exec?.host ?? execConfig.host,
+        security: options?.exec?.security ?? execConfig.security,
+        ask: options?.exec?.ask ?? execConfig.ask,
+        node: options?.exec?.node ?? execConfig.node,
+        pathPrepend: options?.exec?.pathPrepend ?? execConfig.pathPrepend,
+        safeBins: options?.exec?.safeBins ?? execConfig.safeBins,
+        agentId,
+        cwd: options?.workspaceDir,
+        allowBackground,
+        scopeKey,
+        sessionKey: options?.sessionKey,
+        messageProvider: options?.messageProvider,
+        backgroundMs: options?.exec?.backgroundMs ?? execConfig.backgroundMs,
+        timeoutSec: options?.exec?.timeoutSec ?? execConfig.timeoutSec,
+        approvalRunningNoticeMs:
+          options?.exec?.approvalRunningNoticeMs ?? execConfig.approvalRunningNoticeMs,
+        notifyOnExit: options?.exec?.notifyOnExit ?? execConfig.notifyOnExit,
+        sandbox: sandbox
+          ? {
+              containerName: sandbox.containerName,
+              workspaceDir: sandbox.workspaceDir,
+              containerWorkdir: sandbox.containerWorkdir,
+              env: sandbox.docker.env,
+            }
+          : undefined,
+      });
+  const processTool = disableRiskyTools
+    ? null
+    : createProcessTool({
+        cleanupMs: cleanupMsOverride ?? execConfig.cleanupMs,
+        scopeKey,
+      });
   const applyPatchTool =
     !applyPatchEnabled || (sandboxRoot && !allowWorkspaceWrites)
       ? null
@@ -338,8 +357,8 @@ export function createOpenClawCodingTools(options?: {
         : []
       : []),
     ...(applyPatchTool ? [applyPatchTool as unknown as AnyAgentTool] : []),
-    execTool as unknown as AnyAgentTool,
-    processTool as unknown as AnyAgentTool,
+    ...(execTool ? [execTool as unknown as AnyAgentTool] : []),
+    ...(processTool ? [processTool as unknown as AnyAgentTool] : []),
     // Channel docking: include channel-defined agent tools (login, etc.).
     ...listChannelAgentTools({ cfg: options?.config }),
     ...createOpenClawTools({

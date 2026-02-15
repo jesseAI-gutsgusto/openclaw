@@ -20,6 +20,13 @@ import { createSessionsSpawnTool } from "./tools/sessions-spawn-tool.js";
 import { createTtsTool } from "./tools/tts-tool.js";
 import { createWebFetchTool, createWebSearchTool } from "./tools/web-tools.js";
 
+function resolveRiskyExecutionMode(cfg: OpenClawConfig | undefined): "sandbox_only" | undefined {
+  const tools = cfg?.tools as
+    | (NonNullable<OpenClawConfig["tools"]> & { riskyExecution?: unknown })
+    | undefined;
+  return tools?.riskyExecution === "sandbox_only" ? "sandbox_only" : undefined;
+}
+
 export function createOpenClawTools(options?: {
   sandboxBrowserBridgeUrl?: string;
   allowHostBrowserControl?: boolean;
@@ -60,6 +67,15 @@ export function createOpenClawTools(options?: {
   /** If true, omit the message tool from the tool list. */
   disableMessageTool?: boolean;
 }): AnyAgentTool[] {
+  const riskyExecutionMode = resolveRiskyExecutionMode(options?.config);
+  const riskyToolsSandboxOnly = riskyExecutionMode === "sandbox_only";
+  const disableRiskyTools = riskyToolsSandboxOnly && options?.sandboxed !== true;
+  const browserTool = disableRiskyTools
+    ? null
+    : createBrowserTool({
+        sandboxBridgeUrl: options?.sandboxBrowserBridgeUrl,
+        allowHostControl: options?.allowHostBrowserControl,
+      });
   const imageTool = options?.agentDir?.trim()
     ? createImageTool({
         config: options?.config,
@@ -94,10 +110,7 @@ export function createOpenClawTools(options?: {
         requireExplicitTarget: options?.requireExplicitMessageTarget,
       });
   const tools: AnyAgentTool[] = [
-    createBrowserTool({
-      sandboxBridgeUrl: options?.sandboxBrowserBridgeUrl,
-      allowHostControl: options?.allowHostBrowserControl,
-    }),
+    ...(browserTool ? [browserTool] : []),
     createCanvasTool(),
     createNodesTool({
       agentSessionKey: options?.agentSessionKey,

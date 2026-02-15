@@ -1,43 +1,35 @@
 ---
-summary: "RPC adapters for external CLIs (signal-cli, legacy imsg) and gateway patterns"
+summary: "RPC and adapter patterns for gateway integrations"
 read_when:
-  - Adding or changing external CLI integrations
-  - Debugging RPC adapters (signal-cli, imsg)
+  - Adding or changing gateway integration adapters
+  - Debugging adapter boundaries between OpenClaw and external systems
 title: "RPC Adapters"
 ---
 
 # RPC adapters
 
-OpenClaw integrates external CLIs via JSON-RPC. Two patterns are used today.
+OpenClaw integrates external systems through typed adapter boundaries. In the
+B2B v1 baseline, two patterns are common.
 
-## Pattern A: HTTP daemon (signal-cli)
+## Pattern A: token-authenticated HTTP ingress
 
-- `signal-cli` runs as a daemon with JSON-RPC over HTTP.
-- Event stream is SSE (`/api/v1/events`).
-- Health probe: `/api/v1/check`.
-- OpenClaw owns lifecycle when `channels.signal.autoStart=true`.
+- External systems call gateway hook endpoints over HTTP.
+- Auth uses shared secret headers (`Authorization: Bearer <token>`).
+- Payloads are mapped into agent runs with explicit routing and policy checks.
 
-See [Signal](/channels/signal) for setup and endpoints.
+See [Webhooks](/automation/webhook) for endpoint and payload details.
 
-## Pattern B: stdio child process (legacy: imsg)
+## Pattern B: channel plugin adapter runtime
 
-> **Note:** For new iMessage setups, use [BlueBubbles](/channels/bluebubbles) instead.
+- Channel plugins (for example Microsoft Teams) run adapter logic inside the gateway process.
+- Plugin config is loaded from `channels.<id>` and validated against schema.
+- Message events are normalized into OpenClaw session routing primitives.
 
-- OpenClaw spawns `imsg rpc` as a child process (legacy iMessage integration).
-- JSON-RPC is line-delimited over stdin/stdout (one JSON object per line).
-- No TCP port, no daemon required.
-
-Core methods used:
-
-- `watch.subscribe` → notifications (`method: "message"`)
-- `watch.unsubscribe`
-- `send`
-- `chats.list` (probe/diagnostics)
-
-See [iMessage](/channels/imessage) for legacy setup and addressing (`chat_id` preferred).
+See [Microsoft Teams](/channels/msteams) and [Plugins](/tools/plugin).
 
 ## Adapter guidelines
 
-- Gateway owns the process (start/stop tied to provider lifecycle).
-- Keep RPC clients resilient: timeouts, restart on exit.
-- Prefer stable IDs (e.g., `chat_id`) over display strings.
+- Keep adapter contracts typed and explicit.
+- Keep transport auth independent from model/provider auth.
+- Enforce least-privilege config defaults (`pairing`/allowlist where applicable).
+- Emit structured run and policy events for every ingress path.

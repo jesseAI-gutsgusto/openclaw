@@ -1,4 +1,4 @@
-import type { AnyToolDefinition, ToolDefinition, ToolMap } from "./types";
+import type { AnyToolDefinition, ToolDefinition, ToolMap } from "./types.js";
 
 export class ToolRegistry<TContext = unknown, TTools extends ToolMap<TContext> = {}> {
   readonly #tools = new Map<string, AnyToolDefinition<TContext>>();

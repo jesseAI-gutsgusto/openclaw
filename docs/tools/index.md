@@ -1,5 +1,5 @@
 ---
-summary: "Agent tool surface for OpenClaw (browser, canvas, nodes, message, cron) replacing legacy `openclaw-*` skills"
+summary: "Agent tool surface for OpenClaw (browser, message, cron, and runtime tools) replacing legacy `openclaw-*` skills"
 read_when:
   - Adding or modifying agent tools
   - Retiring or changing `openclaw-*` skills
@@ -8,7 +8,7 @@ title: "Tools"
 
 # Tools (OpenClaw)
 
-OpenClaw exposes **first-class agent tools** for browser, canvas, nodes, and cron.
+OpenClaw exposes **first-class agent tools** for browser, messaging, cron, and runtime automation.
 These replace the old `openclaw-*` skills: the tools are typed, no shelling,
 and the agent should rely on them directly.
 
@@ -41,13 +41,13 @@ Profiles:
 - `messaging`: `group:messaging`, `sessions_list`, `sessions_history`, `sessions_send`, `session_status`
 - `full`: no restriction (same as unset)
 
-Example (messaging-only by default, allow Slack + Discord tools too):
+Example (messaging-only by default, allow Slack + Microsoft Teams tools too):
 
 ```json5
 {
   tools: {
     profile: "messaging",
-    allow: ["slack", "discord"],
+    allow: ["slack", "msteams"],
   },
 }
 ```
@@ -147,10 +147,9 @@ Available groups:
 - `group:sessions`: `sessions_list`, `sessions_history`, `sessions_send`, `sessions_spawn`, `session_status`
 - `group:memory`: `memory_search`, `memory_get`
 - `group:web`: `web_search`, `web_fetch`
-- `group:ui`: `browser`, `canvas`
+- `group:ui`: `browser`
 - `group:automation`: `cron`, `gateway`
 - `group:messaging`: `message`
-- `group:nodes`: `nodes`
 - `group:openclaw`: all built-in OpenClaw tools (excludes provider plugins)
 
 Example (allow only file tools + browser):
@@ -193,10 +192,9 @@ Core parameters:
 - `background` (immediate background)
 - `timeout` (seconds; kills the process if exceeded, default 1800)
 - `elevated` (bool; run on host if elevated mode is enabled/allowed; only changes behavior when the agent is sandboxed)
-- `host` (`sandbox | gateway | node`)
+- `host` (`sandbox | gateway`)
 - `security` (`deny | allowlist | full`)
 - `ask` (`off | on-miss | always`)
-- `node` (node id/name for `host=node`)
 - Need a real TTY? Set `pty: true`.
 
 Notes:
@@ -206,8 +204,7 @@ Notes:
 - If `process` is disallowed, `exec` runs synchronously and ignores `yieldMs`/`background`.
 - `elevated` is gated by `tools.elevated` plus any `agents.list[].tools.elevated` override (both must allow) and is an alias for `host=gateway` + `security=full`.
 - `elevated` only changes behavior when the agent is sandboxed (otherwise it’s a no-op).
-- `host=node` can target a macOS companion app or a headless node host (`openclaw node run`).
-- gateway/node approvals and allowlists: [Exec approvals](/tools/exec-approvals).
+- gateway approvals and allowlists: [Exec approvals](/tools/exec-approvals).
 
 ### `process`
 
@@ -280,74 +277,21 @@ Profile management:
 Common parameters:
 
 - `profile` (optional; defaults to `browser.defaultProfile`)
-- `target` (`sandbox` | `host` | `node`)
-- `node` (optional; picks a specific node id/name)
-  Notes:
+
+Notes:
+
 - Requires `browser.enabled=true` (default is `true`; set `false` to disable).
 - All actions accept optional `profile` parameter for multi-instance support.
 - When `profile` is omitted, uses `browser.defaultProfile` (defaults to "chrome").
 - Profile names: lowercase alphanumeric + hyphens only (max 64 chars).
 - Port range: 18800-18899 (~100 profiles max).
 - Remote profiles are attach-only (no start/stop/reset).
-- If a browser-capable node is connected, the tool may auto-route to it (unless you pin `target`).
 - `snapshot` defaults to `ai` when Playwright is installed; use `aria` for the accessibility tree.
 - `snapshot` also supports role-snapshot options (`interactive`, `compact`, `depth`, `selector`) which return refs like `e12`.
 - `act` requires `ref` from `snapshot` (numeric `12` from AI snapshots, or `e12` from role snapshots); use `evaluate` for rare CSS selector needs.
 - Avoid `act` → `wait` by default; use it only in exceptional cases (no reliable UI state to wait on).
 - `upload` can optionally pass a `ref` to auto-click after arming.
 - `upload` also supports `inputRef` (aria ref) or `element` (CSS selector) to set `<input type="file">` directly.
-
-### `canvas`
-
-Drive the node Canvas (present, eval, snapshot, A2UI).
-
-Core actions:
-
-- `present`, `hide`, `navigate`, `eval`
-- `snapshot` (returns image block + `MEDIA:<path>`)
-- `a2ui_push`, `a2ui_reset`
-
-Notes:
-
-- Uses gateway `node.invoke` under the hood.
-- If no `node` is provided, the tool picks a default (single connected node or local mac node).
-- A2UI is v0.8 only (no `createSurface`); the CLI rejects v0.9 JSONL with line errors.
-- Quick smoke: `openclaw nodes canvas a2ui push --node <id> --text "Hello from A2UI"`.
-
-### `nodes`
-
-Discover and target paired nodes; send notifications; capture camera/screen.
-
-Core actions:
-
-- `status`, `describe`
-- `pending`, `approve`, `reject` (pairing)
-- `notify` (macOS `system.notify`)
-- `run` (macOS `system.run`)
-- `camera_snap`, `camera_clip`, `screen_record`
-- `location_get`
-
-Notes:
-
-- Camera/screen commands require the node app to be foregrounded.
-- Images return image blocks + `MEDIA:<path>`.
-- Videos return `FILE:<path>` (mp4).
-- Location returns a JSON payload (lat/lon/accuracy/timestamp).
-- `run` params: `command` argv array; optional `cwd`, `env` (`KEY=VAL`), `commandTimeoutMs`, `invokeTimeoutMs`, `needsScreenRecording`.
-
-Example (`run`):
-
-```json
-{
-  "action": "run",
-  "node": "office-mac",
-  "command": ["echo", "Hello"],
-  "env": ["FOO=bar"],
-  "commandTimeoutMs": 12000,
-  "invokeTimeoutMs": 45000,
-  "needsScreenRecording": false
-}
-```
 
 ### `image`
 
@@ -367,12 +311,12 @@ Notes:
 
 ### `message`
 
-Send messages and channel actions across Discord/Google Chat/Slack/Telegram/WhatsApp/Signal/iMessage/MS Teams.
+Send messages and channel actions across the v1 chat channels: Slack and Microsoft Teams.
 
 Core actions:
 
-- `send` (text + optional media; MS Teams also supports `card` for Adaptive Cards)
-- `poll` (WhatsApp/Discord/MS Teams polls)
+- `send` (text + optional media; Microsoft Teams also supports `card` for Adaptive Cards)
+- `poll` (Microsoft Teams polls)
 - `react` / `reactions` / `read` / `edit` / `delete`
 - `pin` / `unpin` / `list-pins`
 - `permissions`
@@ -389,8 +333,8 @@ Core actions:
 
 Notes:
 
-- `send` routes WhatsApp via the Gateway; other channels go direct.
-- `poll` uses the Gateway for WhatsApp and MS Teams; Discord polls go direct.
+- `send` supports text plus optional media. Microsoft Teams also supports `card` for Adaptive Cards.
+- `poll` supports Microsoft Teams poll delivery.
 - When a message tool call is bound to an active chat session, sends are constrained to that session’s target to avoid cross-context leaks.
 
 ### `cron`
@@ -459,7 +403,7 @@ Notes:
 
 ## Parameters (common)
 
-Gateway-backed tools (`canvas`, `nodes`, `cron`):
+Gateway-backed tools (`cron`, `gateway`):
 
 - `gatewayUrl` (default `ws://127.0.0.1:18789`)
 - `gatewayToken` (if auth enabled)
@@ -471,8 +415,7 @@ or environment credentials for overrides, and missing explicit credentials is an
 Browser tool:
 
 - `profile` (optional; defaults to `browser.defaultProfile`)
-- `target` (`sandbox` | `host` | `node`)
-- `node` (optional; pin a specific node id/name)
+- `target` (`sandbox` | `host`)
 
 ## Recommended agent flows
 
@@ -483,23 +426,11 @@ Browser automation:
 3. `act` (click/type/press)
 4. `screenshot` if you need visual confirmation
 
-Canvas render:
-
-1. `canvas` → `present`
-2. `a2ui_push` (optional)
-3. `snapshot`
-
-Node targeting:
-
-1. `nodes` → `status`
-2. `describe` on the chosen node
-3. `notify` / `run` / `camera_snap` / `screen_record`
-
 ## Safety
 
-- Avoid direct `system.run`; use `nodes` → `run` only with explicit user consent.
-- Respect user consent for camera/screen capture.
-- Use `status/describe` to ensure permissions before invoking media commands.
+- Keep `tools.deny` strict for risky capabilities (`exec`, `bash`, browser actions).
+- Use approval flows for side-effecting actions and keep audit logs enabled.
+- Keep message sends scoped to the active routed session unless an operator explicitly overrides targeting.
 
 ## How tools are presented to the agent
 

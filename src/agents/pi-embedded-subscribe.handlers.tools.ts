@@ -5,6 +5,13 @@ import type {
 } from "../plugins/types.js";
 import type { EmbeddedPiSubscribeContext } from "./pi-embedded-subscribe.handlers.types.js";
 import { emitAgentEvent } from "../infra/agent-events.js";
+import {
+  DEFAULT_POLICY_DECISION_ID,
+  emitRunToolCompletedEvent,
+  emitRunToolStartedEvent,
+  isPolicyDecisionTraceV1,
+  type RunEventPolicyDecisionTraceV1,
+} from "../infra/run-events.js";
 import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
 import { normalizeTextForComparison } from "./pi-embedded-helpers.js";
 import { isMessagingTool, isMessagingToolSendAction } from "./pi-embedded-messaging.js";
@@ -20,6 +27,77 @@ import { normalizeToolName } from "./tool-policy.js";
 
 /** Track tool execution start times and args for after_tool_call hook */
 const toolStartData = new Map<string, { startTime: number; args: unknown }>();
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function pickNonEmptyString(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return undefined;
+}
+
+function resolvePolicyDecisionId(value: unknown): string {
+  if (!isRecord(value)) {
+    return DEFAULT_POLICY_DECISION_ID;
+  }
+  const args = isRecord(value.args) ? value.args : undefined;
+  const result = isRecord(value.result) ? value.result : undefined;
+  const policy = isRecord(value.policy) ? value.policy : undefined;
+  return (
+    pickNonEmptyString(
+      value.policyDecisionId,
+      value.decisionId,
+      policy?.decisionId,
+      args?.policyDecisionId,
+      args?.decisionId,
+      result?.policyDecisionId,
+      result?.decisionId,
+    ) ?? DEFAULT_POLICY_DECISION_ID
+  );
+}
+
+function resolvePolicyDecisionTrace(value: unknown): RunEventPolicyDecisionTraceV1 | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const args = isRecord(value.args) ? value.args : undefined;
+  const result = isRecord(value.result) ? value.result : undefined;
+  const policy = isRecord(value.policy) ? value.policy : undefined;
+  const argsPolicy = args && isRecord(args.policy) ? args.policy : undefined;
+  const resultPolicy = result && isRecord(result.policy) ? result.policy : undefined;
+  const candidates: unknown[] = [
+    value.policyDecisionTrace,
+    value.policyTrace,
+    value.trace,
+    policy?.policyDecisionTrace,
+    policy?.policyTrace,
+    policy?.trace,
+    args?.policyDecisionTrace,
+    args?.policyTrace,
+    args?.trace,
+    argsPolicy?.policyDecisionTrace,
+    argsPolicy?.policyTrace,
+    argsPolicy?.trace,
+    result?.policyDecisionTrace,
+    result?.policyTrace,
+    result?.trace,
+    resultPolicy?.policyDecisionTrace,
+    resultPolicy?.policyTrace,
+    resultPolicy?.trace,
+  ];
+  for (const candidate of candidates) {
+    if (isPolicyDecisionTraceV1(candidate)) {
+      return candidate;
+    }
+  }
+  return undefined;
+}
+
 function extendExecMeta(toolName: string, args: unknown, meta?: string): string | undefined {
   const normalized = toolName.trim().toLowerCase();
   if (normalized !== "exec" && normalized !== "bash") {
@@ -108,6 +186,14 @@ export async function handleToolExecutionStart(
     stream: "tool",
     data: { phase: "start", name: toolName, toolCallId },
   });
+  emitRunToolStartedEvent({
+    runId: ctx.params.runId,
+    toolName,
+    toolCallId,
+    args,
+    policyDecisionId: resolvePolicyDecisionId(evt),
+    policyDecisionTrace: resolvePolicyDecisionTrace(evt),
+  });
 
   if (
     ctx.params.onToolResult &&
@@ -184,16 +270,17 @@ export async function handleToolExecutionEnd(
   const result = evt.result;
   const isToolError = isError || isToolResultError(result);
   const sanitizedResult = sanitizeToolResult(result);
+  const startData = toolStartData.get(toolCallId);
+  const toolErrorMessage = isToolError ? extractToolErrorMessage(sanitizedResult) : undefined;
   const meta = ctx.state.toolMetaById.get(toolCallId);
   ctx.state.toolMetas.push({ toolName, meta });
   ctx.state.toolMetaById.delete(toolCallId);
   ctx.state.toolSummaryById.delete(toolCallId);
   if (isToolError) {
-    const errorMessage = extractToolErrorMessage(sanitizedResult);
     ctx.state.lastToolError = {
       toolName,
       meta,
-      error: errorMessage,
+      error: toolErrorMessage,
     };
   }
 
@@ -239,6 +326,18 @@ export async function handleToolExecutionEnd(
       isError: isToolError,
     },
   });
+  emitRunToolCompletedEvent({
+    runId: ctx.params.runId,
+    toolName,
+    toolCallId,
+    args: startData?.args,
+    policyDecisionId: resolvePolicyDecisionId(evt),
+    policyDecisionTrace: resolvePolicyDecisionTrace(evt),
+    meta,
+    result: sanitizedResult,
+    isError: isToolError,
+    errorMessage: toolErrorMessage,
+  });
 
   ctx.log.debug(
     `embedded run tool end: runId=${ctx.params.runId} tool=${toolName} toolCallId=${toolCallId}`,
@@ -254,7 +353,6 @@ export async function handleToolExecutionEnd(
   // Run after_tool_call plugin hook (fire-and-forget)
   const hookRunnerAfter = ctx.hookRunner ?? getGlobalHookRunner();
   if (hookRunnerAfter?.hasHooks("after_tool_call")) {
-    const startData = toolStartData.get(toolCallId);
     toolStartData.delete(toolCallId);
     const durationMs = startData?.startTime != null ? Date.now() - startData.startTime : undefined;
     const toolArgs = startData?.args;
@@ -262,7 +360,7 @@ export async function handleToolExecutionEnd(
       toolName,
       params: (toolArgs && typeof toolArgs === "object" ? toolArgs : {}) as Record<string, unknown>,
       result: sanitizedResult,
-      error: isToolError ? extractToolErrorMessage(sanitizedResult) : undefined,
+      error: toolErrorMessage,
       durationMs,
     };
     void hookRunnerAfter

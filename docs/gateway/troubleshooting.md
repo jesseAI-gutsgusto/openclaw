@@ -208,8 +208,7 @@ Common signatures:
 
 Related:
 
-- [/nodes/troubleshooting](/nodes/troubleshooting)
-- [/nodes/index](/nodes/index)
+- [/gateway/pairing](/gateway/pairing)
 - [/tools/exec-approvals](/tools/exec-approvals)
 
 ## Browser tool fails

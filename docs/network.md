@@ -1,16 +1,16 @@
 ---
-summary: "Network hub: gateway surfaces, pairing, discovery, and security"
+summary: "Network hub: gateway surfaces, DM pairing, discovery, and security"
 read_when:
   - You need the network architecture + security overview
-  - You are debugging local vs tailnet access or pairing
+  - You are debugging local vs tailnet access
   - You want the canonical list of networking docs
 title: "Network"
 ---
 
 # Network hub
 
-This hub links the core docs for how OpenClaw connects, pairs, and secures
-devices across localhost, LAN, and tailnet.
+This hub links the core docs for how OpenClaw connects, authorizes, and secures
+customer gateway access across localhost, LAN, and tailnet.
 
 ## Core model
 
@@ -21,16 +21,13 @@ devices across localhost, LAN, and tailnet.
 
 ## Pairing + identity
 
-- [Pairing overview (DM + nodes)](/channels/pairing)
-- [Gateway-owned node pairing](/gateway/pairing)
-- [Devices CLI (pairing + token rotation)](/cli/devices)
+- [Pairing overview (DM access)](/channels/pairing)
 - [Pairing CLI (DM approvals)](/cli/pairing)
 
 Local trust:
 
-- Local connections (loopback or the gateway host’s own tailnet address) can be
-  auto‑approved for pairing to keep same‑host UX smooth.
-- Non‑local tailnet/LAN clients still require explicit pairing approval.
+- Local control-plane connections should still use token auth by default.
+- DM senders still require explicit allowlist or pairing approval.
 
 ## Discovery + transports
 
@@ -38,13 +35,6 @@ Local trust:
 - [Bonjour / mDNS](/gateway/bonjour)
 - [Remote access (SSH)](/gateway/remote)
 - [Tailscale](/gateway/tailscale)
-
-## Nodes + transports
-
-- [Nodes overview](/nodes)
-- [Bridge protocol (legacy nodes)](/gateway/bridge-protocol)
-- [Node runbook: iOS](/platforms/ios)
-- [Node runbook: Android](/platforms/android)
 
 ## Security
 

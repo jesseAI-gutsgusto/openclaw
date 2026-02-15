@@ -491,7 +491,11 @@ export function registerPluginsCli(program: Command) {
         if (opts.link) {
           const existing = cfg.plugins?.load?.paths ?? [];
           const merged = Array.from(new Set([...existing, resolved]));
-          const probe = await installPluginFromPath({ path: resolved, dryRun: true });
+          const probe = await installPluginFromPath({
+            path: resolved,
+            dryRun: true,
+            config: cfg,
+          });
           if (!probe.ok) {
             defaultRuntime.error(probe.error);
             process.exit(1);
@@ -532,6 +536,7 @@ export function registerPluginsCli(program: Command) {
 
         const result = await installPluginFromPath({
           path: resolved,
+          config: cfg,
           logger: {
             info: (msg) => defaultRuntime.log(msg),
             warn: (msg) => defaultRuntime.log(theme.warn(msg)),
@@ -596,6 +601,7 @@ export function registerPluginsCli(program: Command) {
 
       const result = await installPluginFromNpmSpec({
         spec: raw,
+        config: cfg,
         logger: {
           info: (msg) => defaultRuntime.log(msg),
           warn: (msg) => defaultRuntime.log(theme.warn(msg)),

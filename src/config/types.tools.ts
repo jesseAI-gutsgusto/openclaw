@@ -440,6 +440,10 @@ export type ToolsConfig = {
     /** Approved senders for /elevated (per-provider allowlists). */
     allowFrom?: AgentElevatedAllowFromConfig;
   };
+  /** Risky tool execution policy. */
+  riskyExecution?: "sandbox_only";
+  /** Require explicit approval for risky tools. */
+  riskyRequireApproval?: boolean;
   /** Exec tool defaults. */
   exec?: ExecToolConfig;
   /** Sub-agent tool policy defaults (deny wins). */
